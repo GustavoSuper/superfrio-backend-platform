@@ -1,83 +1,151 @@
-var pdf = require('html-pdf');
-var ejs = require('ejs');
-const fs = require("fs");
+const ejs = require('ejs');
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
 const AWS = require('aws-sdk');
 const ChecklistComp = require('../model/Despesa');
 const ChecklistCompItem = require('../model/DespesaItem');
-var path = require('path');
+const path = require('path');
+const mongoose = require('mongoose');
 
 module.exports = {
+  async create(req, res) {
+    let browser = null;
 
-    async create(req, res){
+    try {
+      const { id } = req.params;
 
-        const checkList = await ChecklistComp.findOne({ _id: req.params.id });
-        const checkListItens = await ChecklistCompItem.find({ iddespesa: req.params.id });
-        var pdflocation = '';
-        const dataentrada = new Date(checkList.dataentrada);
-        let valor = 0;
-        if(checkListItens.length > 0){
-            checkListItens.map((item) => {
-                valor = valor + item.valor;
-            })
-        }
-        ejs.renderFile(path.join(__dirname, '..' ,'templates', 'despesa.ejs'), {checklist: checkList, checklistItens: checkListItens, valor: new Intl.NumberFormat('pt-br',{style: 'currency', currency:'BRL'}).format(valor), itensLength: checkListItens.length, dataentrada: dataentrada.toLocaleDateString('pt-BR', {timeZone: 'UTC'})}, (err, html) => {
-            if(err){
-                console.log("Erro ao renderizar HTML: " + err);
-                return res.status(400).send({ error: "Erro ao gerar HTML" });
-            } else {
-                pdf.create(html, {
-                                    format: "A4", 
-                                    timeout: '500000',
-                                    "footer": {
-                                        "height": "25mm",
-                                        "contents": `<p>Página {{page}}</p>`
-                                    },
-                                    "header": {
-                                        "height": "10mm",
-                                      }
-                                    }).toBuffer((err, buffer) => {
-                    if(err){
-                        console.log("Erro: " + err)
-                        return res.status(400).send({
-                            error: "Erro ao gerar PDF",
-                            details: process.env.NODE_ENV === 'production' ? undefined : String(err)
-                        });
-                    } else {
-                        const s3 = new AWS.S3({
-                            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-                            region: process.env.AWS_REGION
-                          });
-                        const filename = checkList._id +".pdf";
+      console.log('[generatePDFDespesa] Iniciando geração', {
+        id,
+        method: req.method,
+        url: req.originalUrl
+      });
 
-                        const params = {
-                            Bucket: process.env.S3_BUCKET,
-                            Key: filename,
-                            Body: buffer,
-                            ContentType: 'application/pdf'
-                        };
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        return res.status(400).send({ error: 'ID inválido' });
+      }
 
-                        if (process.env.S3_PUBLIC_READ === 'true') {
-                            params.ACL = 'public-read';
-                        }
+      const checkList = await ChecklistComp.findOne({ _id: id });
 
-                        s3.upload(params, async function(err, data) {
-                            if (err) {
-                                console.log(err);
-                                return res.status(400).send({
-                                    error: "Erro ao salvar na AWS",
-                                    details: process.env.NODE_ENV === 'production' ? undefined : String(err)
-                                });
-                            }
-                            pdflocation = data.Location;
-                            console.log(`File uploaded successfully. ${data.Location}`);
-                            await ChecklistComp.updateOne({ _id: checkList._id },{pdflink: pdflocation});
-                            return res.status(200).send({ success: true, pdflink: pdflocation});
-                        });
-                    }
-                });       
-            }
+      if (!checkList) {
+        return res.status(404).send({ error: 'Despesa não encontrada' });
+      }
+
+      const checkListItens = await ChecklistCompItem.find({ iddespesa: id });
+
+      let valor = 0;
+      if (checkListItens.length > 0) {
+        checkListItens.forEach((item) => {
+          valor += item.valor || 0;
         });
-    }
-};
+      }
 
+      const dataentrada = checkList.dataentrada
+        ? new Date(checkList.dataentrada)
+        : new Date();
+
+      const templatePath = path.join(__dirname, '..', 'templates', 'despesa.ejs');
+
+      const html = await ejs.renderFile(templatePath, {
+        checklist: checkList,
+        checklistItens: checkListItens,
+        valor: new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(valor),
+        itensLength: checkListItens.length,
+        dataentrada: dataentrada.toLocaleDateString('pt-BR', { timeZone: 'UTC' })
+      });
+
+      console.log('[generatePDFDespesa] HTML renderizado', {
+        checklistId: checkList._id,
+        itensLength: checkListItens.length,
+        templatePath
+      });
+
+      const launchOptions = {
+        args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless
+      };
+
+      browser = await puppeteer.launch(launchOptions);
+
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+
+      const buffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate: `
+          <div style="font-size:8px;width:100%;text-align:center;">
+            <span class="pageNumber"></span>
+          </div>
+        `,
+        margin: { top: '10mm', bottom: '25mm', left: '10mm', right: '10mm' }
+      });
+
+      console.log('[generatePDFDespesa] PDF gerado', {
+        bufferSize: buffer ? buffer.length : 0
+      });
+
+      if (
+        !process.env.AWS_ACCESS_KEY_ID ||
+        !process.env.AWS_SECRET_ACCESS_KEY ||
+        !process.env.AWS_REGION ||
+        !process.env.S3_BUCKET
+      ) {
+        return res.status(400).send({
+          error: 'Configuração AWS incompleta'
+        });
+      }
+
+      const s3 = new AWS.S3({
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        region: process.env.AWS_REGION
+      });
+
+      const filename = `${checkList._id}.pdf`;
+
+      const params = {
+        Bucket: process.env.S3_BUCKET,
+        Key: filename,
+        Body: buffer,
+        ContentType: 'application/pdf'
+      };
+
+      if (process.env.S3_PUBLIC_READ === 'true') {
+        params.ACL = 'public-read';
+      }
+
+      const data = await s3.upload(params).promise();
+
+      console.log('[generatePDFDespesa] Upload concluído', {
+        location: data.Location
+      });
+
+      await ChecklistComp.updateOne(
+        { _id: checkList._id },
+        { pdflink: data.Location }
+      );
+
+      return res.status(200).send({
+        success: true,
+        pdflink: data.Location
+      });
+    } catch (err) {
+      console.log('[generatePDFDespesa] Erro geral:', err);
+      return res.status(500).send({
+        error: 'Erro interno ao gerar PDF',
+        details: process.env.NODE_ENV === 'production' ? undefined : String(err)
+      });
+    } finally {
+      if (browser) {
+        await browser.close();
+      }
+    }
+  }
+};
