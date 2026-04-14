@@ -34,45 +34,45 @@ module.exports = {
                                     "header": {
                                         "height": "10mm",
                                       }
-                                    }).toFile("./assets/" + checkList._id +".pdf",(err, filepath) => {
+                                    }).toBuffer((err, buffer) => {
                     if(err){
                         console.log("Erro: " + err)
-                        return res.status(400).send({ error: "Erro ao gerar PDF" });
+                        return res.status(400).send({
+                            error: "Erro ao gerar PDF",
+                            details: process.env.NODE_ENV === 'production' ? undefined : String(err)
+                        });
                     } else {
                         const s3 = new AWS.S3({
                             accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+                            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+                            region: process.env.AWS_REGION
                           });
                         const filename = checkList._id +".pdf";
-                        
-                        // Read content from the file
-                        const fileContent = fs.readFileSync(path.join(__dirname, '..', '../assets', filename));
-                          
-                        // Setting up S3 upload parameters
+
                         const params = {
                             Bucket: process.env.S3_BUCKET,
-                            Key: filename, // File name you want to save as in S3
-                            Body: fileContent
+                            Key: filename,
+                            Body: buffer,
+                            ContentType: 'application/pdf'
                         };
 
-                        // Uploading files to the bucket
+                        if (process.env.S3_PUBLIC_READ === 'true') {
+                            params.ACL = 'public-read';
+                        }
+
                         s3.upload(params, async function(err, data) {
                             if (err) {
                                 console.log(err);
-                                return res.status(400).send({ error: "Erro ao salvar na AWS" });
+                                return res.status(400).send({
+                                    error: "Erro ao salvar na AWS",
+                                    details: process.env.NODE_ENV === 'production' ? undefined : String(err)
+                                });
                             }
                             pdflocation = data.Location;
                             console.log(`File uploaded successfully. ${data.Location}`);
-                            const returnUpdate = await ChecklistComp.updateOne({ _id: checkList._id },{pdflink: pdflocation});
-                            //return res.json(returnUpdate);
-
-                            //Remove File after upload to AWS
-                            fs.unlink(path.join(__dirname, '..', '../assets', filename),function(err){
-                                if(err) return console.log(err);
-                                console.log('file deleted successfully');
-                            });  
+                            await ChecklistComp.updateOne({ _id: checkList._id },{pdflink: pdflocation});
+                            return res.status(200).send({ success: true, pdflink: pdflocation});
                         });
-                        return res.status(200).send({ success: true, pdflink: pdflocation});
                     }
                 });       
             }
