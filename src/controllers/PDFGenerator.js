@@ -1,5 +1,6 @@
 var ejs = require('ejs');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 const AWS = require('aws-sdk');
 const ChecklistComp = require('../model/ChecklistComp');
 const ChecklistCompItem = require('../model/ChecklistCompItem');
@@ -23,8 +24,10 @@ module.exports = {
 
                 try {
                     browser = await puppeteer.launch({
-                        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-                        headless: 'new'
+                    args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox'],
+                    defaultViewport: chromium.defaultViewport,
+                    executablePath: await chromium.executablePath(),
+                    headless: chromium.headless
                     });
 
                     const page = await browser.newPage();
