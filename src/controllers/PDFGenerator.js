@@ -1,11 +1,10 @@
 var ejs = require('ejs');
-const fs = require("fs");
 const AWS = require('aws-sdk');
 const ChecklistComp = require('../model/ChecklistComp');
 const ChecklistCompItem = require('../model/ChecklistCompItem');
 var path = require('path');
 const puppeteer = require('puppeteer-core');
-const chromium = require('@sparticuz/chromium');
+const chromium = require('@sparticuz/chromium-min');
 
 module.exports = {
 
@@ -33,10 +32,16 @@ module.exports = {
                         let browser;
 
                         try {
+                            const remotePath = process.env.CHROMIUM_REMOTE_EXEC_PATH;
+
+                            if (!remotePath) {
+                                throw new Error('CHROMIUM_REMOTE_EXEC_PATH não configurado');
+                            }
+
                             browser = await puppeteer.launch({
                                 args: chromium.args,
                                 defaultViewport: chromium.defaultViewport,
-                                executablePath: await chromium.executablePath(),
+                                executablePath: await chromium.executablePath(remotePath),
                                 headless: chromium.headless
                             });
 
@@ -86,7 +91,7 @@ module.exports = {
                             pdflocation = data.Location;
                             console.log(`File uploaded successfully. ${data.Location}`);
 
-                            const returnUpdate = await ChecklistComp.updateOne(
+                            await ChecklistComp.updateOne(
                                 { _id: checkList._id },
                                 { pdflink: pdflocation }
                             );

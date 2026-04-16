@@ -4,7 +4,7 @@ const ChecklistComp = require('../model/Despesa');
 const ChecklistCompItem = require('../model/DespesaItem');
 var path = require('path');
 const puppeteer = require('puppeteer-core');
-const chromium = require('@sparticuz/chromium');
+const chromium = require('@sparticuz/chromium-min');
 
 module.exports = {
 
@@ -40,10 +40,16 @@ module.exports = {
                         let browser;
 
                         try {
+                            const remotePath = process.env.CHROMIUM_REMOTE_EXEC_PATH;
+
+                            if (!remotePath) {
+                                throw new Error('CHROMIUM_REMOTE_EXEC_PATH não configurado');
+                            }
+
                             browser = await puppeteer.launch({
                                 args: chromium.args,
                                 defaultViewport: chromium.defaultViewport,
-                                executablePath: await chromium.executablePath(),
+                                executablePath: await chromium.executablePath(remotePath),
                                 headless: chromium.headless
                             });
 
