@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js"
   },
   "dependencies": {
+    "@sparticuz/chromium": "^123.0.1",
     "aws-sdk": "^2.710.0",
     "axios": "^0.19.2",
     "cors": "^2.8.5",
@@ -16,13 +17,12 @@
     "ejs": "^3.1.5",
     "expo-server-sdk": "^3.6.0",
     "express": "^4.17.1",
-    "html-pdf": "^2.2.0",
     "mongoose": "^5.8.0",
     "node-cron": "^2.0.3",
     "nodemailer": "^6.3.1",
     "nodemailer-express-handlebars": "^3.1.0",
     "pdfkit": "^0.11.0",
-    "puppeteer": "^22.12.1",
+    "puppeteer-core": "^22.12.1",
     "request": "^2.88.2",
     "socket.io": "^2.3.0",
     "yarn": "^1.22.22"

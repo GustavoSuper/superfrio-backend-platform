@@ -1,77 +1,115 @@
-var pdf = require('html-pdf');
 var ejs = require('ejs');
 const fs = require("fs");
 const AWS = require('aws-sdk');
 const ChecklistComp = require('../model/ChecklistComp');
 const ChecklistCompItem = require('../model/ChecklistCompItem');
 var path = require('path');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 
 module.exports = {
 
     async create(req, res){
 
-        const checkList = await ChecklistComp.findOne({ _id: req.params.id }).populate('idcliente').populate('idcompressor').populate('idfabricante');
-        const checkListItens = await ChecklistCompItem.find({ idchecklistcomp: req.params.id }).sort({ordemitem: 1});
-        var pdflocation = '';
-        const dataentrada = new Date(checkList.dataentrada);
-        ejs.renderFile(path.join(__dirname, '..' ,'templates', 'compressor.ejs'), {checklist: checkList, checklistItens: checkListItens, itensLength: checkListItens.length, dataentrada: dataentrada.toLocaleDateString('pt-BR', {timeZone: 'UTC'})}, (err, html) => {
-            if(err){
-                console.log("Erro ao renderizar HTML: " + err);
-                return res.status(400).send({ error: "Erro ao gerar HTML" });
-            } else {
-                pdf.create(html, {
-                                    format: "A4", 
-                                    timeout: '500000',
-                                    "footer": {
-                                        "height": "25mm",
-                                        "contents": `<p>Página {{page}}</p>`
-                                    },
-                                    "header": {
-                                        "height": "10mm",
-                                    }
-                                    }).toFile("./assets/" + checkList._id +".pdf",(err, filepath) => {
-                    if(err){
-                        console.log("Erro: " + err)
-                        return res.status(400).send({ error: "Erro ao gerar PDF" });
-                    } else {
-                        const s3 = new AWS.S3({
-                            accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-                          });
-                        const filename = checkList._id +".pdf";
-                        
-                        // Read content from the file
-                        const fileContent = fs.readFileSync(path.join(__dirname, '..', '../assets', filename));
-                          
-                        // Setting up S3 upload parameters
-                        const params = {
-                            Bucket: process.env.S3_BUCKET,
-                            Key: filename, // File name you want to save as in S3
-                            Body: fileContent
-                        };
+        try {
+            const checkList = await ChecklistComp.findOne({ _id: req.params.id }).populate('idcliente').populate('idcompressor').populate('idfabricante');
+            const checkListItens = await ChecklistCompItem.find({ idchecklistcomp: req.params.id }).sort({ordemitem: 1});
+            var pdflocation = '';
+            const dataentrada = new Date(checkList.dataentrada);
 
-                        // Uploading files to the bucket
-                        s3.upload(params, async function(err, data) {
-                            if (err) {
-                                console.log(err);
-                                return res.status(400).send({ error: "Erro ao salvar na AWS" });
-                            }
+            ejs.renderFile(
+                path.join(__dirname, '..' ,'templates', 'compressor.ejs'),
+                {
+                    checklist: checkList,
+                    checklistItens: checkListItens,
+                    itensLength: checkListItens.length,
+                    dataentrada: dataentrada.toLocaleDateString('pt-BR', {timeZone: 'UTC'})
+                },
+                async (err, html) => {
+                    if(err){
+                        console.log("Erro ao renderizar HTML: " + err);
+                        return res.status(400).send({ error: "Erro ao gerar HTML" });
+                    } else {
+                        let browser;
+
+                        try {
+                            browser = await puppeteer.launch({
+                                args: chromium.args,
+                                defaultViewport: chromium.defaultViewport,
+                                executablePath: await chromium.executablePath(),
+                                headless: chromium.headless
+                            });
+
+                            const page = await browser.newPage();
+
+                            await page.setContent(html, {
+                                waitUntil: 'networkidle0'
+                            });
+
+                            const pdfBuffer = await page.pdf({
+                                format: "A4",
+                                printBackground: true,
+                                displayHeaderFooter: true,
+                                headerTemplate: `<div style="width: 100%; font-size: 10px; padding: 0 20px;"></div>`,
+                                footerTemplate: `
+                                    <div style="width: 100%; font-size: 10px; text-align: center; padding: 0 20px;">
+                                        <span>Página <span class="pageNumber"></span></span>
+                                    </div>
+                                `,
+                                margin: {
+                                    top: "10mm",
+                                    bottom: "25mm",
+                                    left: "10mm",
+                                    right: "10mm"
+                                },
+                                timeout: 500000
+                            });
+
+                            await browser.close();
+
+                            const s3 = new AWS.S3({
+                                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+                            });
+
+                            const filename = checkList._id + ".pdf";
+
+                            const params = {
+                                Bucket: process.env.S3_BUCKET,
+                                Key: filename,
+                                Body: pdfBuffer,
+                                ContentType: 'application/pdf'
+                            };
+
+                            const data = await s3.upload(params).promise();
+
                             pdflocation = data.Location;
                             console.log(`File uploaded successfully. ${data.Location}`);
-                            const returnUpdate = await ChecklistComp.updateOne({ _id: checkList._id },{pdflink: pdflocation});
-                            //return res.json(returnUpdate);
 
-                            //Remove File after upload to AWS
-                            fs.unlink(path.join(__dirname, '..', '../assets', filename),function(err){
-                                if(err) return console.log(err);
-                                console.log('file deleted successfully');
-                            });  
-                        });
-                        return res.status(200).send({ success: true, pdflink: pdflocation});
+                            const returnUpdate = await ChecklistComp.updateOne(
+                                { _id: checkList._id },
+                                { pdflink: pdflocation }
+                            );
+
+                            return res.status(200).send({ success: true, pdflink: pdflocation });
+                        } catch(err){
+                            if (browser) {
+                                try {
+                                    await browser.close();
+                                } catch (closeErr) {
+                                    console.log(closeErr);
+                                }
+                            }
+
+                            console.log("Erro: " + err);
+                            return res.status(400).send({ error: "Erro ao gerar PDF" });
+                        }
                     }
-                });       
-            }
-        });
+                }
+            );
+        } catch (err) {
+            console.log("Erro geral: " + err);
+            return res.status(400).send({ error: "Erro ao processar a solicitação" });
+        }
     }
 };
-
