@@ -5,26 +5,14 @@ const ChecklistCompItem = require('../model/ChecklistCompItem');
 var path = require('path');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium-min');
-const { runPdfJob, acquirePdfCooldown } = require('../utils/pdfQueue');
-const connectDB = require('../database/connectDB');
+const { runPdfJob } = require('../utils/pdfQueue');
 
 module.exports = {
 
     async create(req, res){
-        const cooldown = acquirePdfCooldown(`pdf:comp:${req.params.id}`, 10000);
-
-        if (!cooldown.ok) {
-            return res.status(429).send({
-                error: `Aguarde ${Math.ceil(cooldown.retryAfterMs / 1000)} segundos para gerar o PDF novamente.`,
-                retryAfterMs: cooldown.retryAfterMs
-            });
-        }
-
         return runPdfJob(async () => {
 
             try {
-                await connectDB();
-
                 const checkList = await ChecklistComp.findOne({ _id: req.params.id }).populate('idcliente').populate('idcompressor').populate('idfabricante');
                 const checkListItens = await ChecklistCompItem.find({ idchecklistcomp: req.params.id }).sort({ordemitem: 1});
                 var pdflocation = '';
