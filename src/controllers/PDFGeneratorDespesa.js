@@ -6,6 +6,7 @@ var path = require('path');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium-min');
 const { runPdfJob, acquirePdfCooldown } = require('../utils/pdfQueue');
+const connectDB = require('../database/connectDB');
 
 module.exports = {
 
@@ -22,6 +23,8 @@ module.exports = {
         return runPdfJob(async () => {
 
             try {
+                await connectDB();
+
                 const checkList = await ChecklistComp.findOne({ _id: req.params.id });
                 const checkListItens = await ChecklistCompItem.find({ iddespesa: req.params.id });
                 var pdflocation = '';
