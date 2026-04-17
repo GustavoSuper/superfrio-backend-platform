@@ -5,11 +5,20 @@ const ChecklistCompItem = require('../model/DespesaItem');
 var path = require('path');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium-min');
-const { runPdfJob } = require('../utils/pdfQueue');
+const { runPdfJob, acquirePdfCooldown } = require('../utils/pdfQueue');
 
 module.exports = {
 
     async create(req, res){
+        const cooldown = acquirePdfCooldown(`pdf:despesa:${req.params.id}`, 10000);
+
+        if (!cooldown.ok) {
+            return res.status(429).send({
+                error: `Aguarde ${Math.ceil(cooldown.retryAfterMs / 1000)} segundos para gerar o PDF novamente.`,
+                retryAfterMs: cooldown.retryAfterMs
+            });
+        }
+
         return runPdfJob(async () => {
 
             try {
