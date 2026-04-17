@@ -11,11 +11,11 @@ require('dotenv').config();
 const app = express();
 const server = http.Server(app);
 
-// mongoose.connect(process.env.DATABASE_URI, {
-//     useNewUrlParser:true,
-//     useUnifiedTopology: true,
-//     useFindAndModify:false
-// });
+mongoose.connect(process.env.DATABASE_URI, {
+    useNewUrlParser:true,
+    useUnifiedTopology: true,
+    useFindAndModify:false
+});
 
 //setupWebsocket(server);
 

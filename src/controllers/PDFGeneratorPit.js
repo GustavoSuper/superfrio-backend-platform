@@ -5,125 +5,102 @@ const ChecklistPitItem = require('../model/ChecklistPitItem');
 var path = require('path');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium-min');
-const { runPdfJob, acquirePdfCooldown } = require('../utils/pdfQueue');
-const connectDB = require('../database/connectDB');
 
 module.exports = {
 
     async create(req, res){
-        const cooldown = acquirePdfCooldown(`pdf:pit:${req.params.id}`, 10000);
-
-        if (!cooldown.ok) {
-            return res.status(429).send({
-                error: `Aguarde ${Math.ceil(cooldown.retryAfterMs / 1000)} segundos para gerar o PDF novamente.`,
-                retryAfterMs: cooldown.retryAfterMs
-            });
-        }
-
-        return runPdfJob(async () => {
         
-            try {
-                await connectDB();
+        try {
+            const checkList = await ChecklistPit.findOne({ _id: req.params.id });
+            const checkListItens = await ChecklistPitItem.find({ idchecklistpit: req.params.id }).sort({ordemitem: 1});
+            var pdflocation = '';
+            const dataentrada = new Date(checkList.dataentrada);
 
-                const checkList = await ChecklistPit.findOne({ _id: req.params.id });
-                const checkListItens = await ChecklistPitItem.find({ idchecklistpit: req.params.id }).sort({ordemitem: 1});
-                var pdflocation = '';
-                const dataentrada = new Date(checkList.dataentrada);
+            ejs.renderFile(
+                path.join(__dirname, '..' ,'templates', 'pitstop-instalacao.ejs'),
+                {
+                    checklist: checkList,
+                    checklistItens: checkListItens,
+                    dataentrada: dataentrada.toLocaleDateString('pt-BR', {timeZone: 'UTC'})
+                },
+                async (err, html) => {
+                    if(err){
+                        console.log("Erro ao renderizar HTML: " + err);
+                        return res.status(400).send({ error: "Erro ao gerar HTML" });
+                    } else {
+                        let browser;
 
-                const html = await ejs.renderFile(
-                    path.join(__dirname, '..' ,'templates', 'pitstop-instalacao.ejs'),
-                    {
-                        checklist: checkList,
-                        checklistItens: checkListItens,
-                        dataentrada: dataentrada.toLocaleDateString('pt-BR', {timeZone: 'UTC'})
-                    }
-                );
-
-                let browser;
-                let page;
-
-                try {
-                    const remotePath = process.env.CHROMIUM_REMOTE_EXEC_PATH;
-
-                    if (!remotePath) {
-                        throw new Error('CHROMIUM_REMOTE_EXEC_PATH não configurado');
-                    }
-
-                    browser = await puppeteer.launch({
-                        args: chromium.args,
-                        defaultViewport: chromium.defaultViewport,
-                        executablePath: await chromium.executablePath(remotePath),
-                        headless: chromium.headless,
-                        protocolTimeout: 120000
-                    });
-
-                    page = await browser.newPage();
-
-                    await page.setContent(html, {
-                        waitUntil: 'networkidle0'
-                    });
-
-                    const pdfBuffer = await page.pdf({
-                        format: "A4",
-                        printBackground: true,
-                        timeout: 100000
-                    });
-
-                    await page.close();
-                    page = null;
-
-                    await browser.close();
-                    browser = null;
-
-                    const s3 = new AWS.S3({
-                        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-                        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-                    });
-
-                    const filename = checkList._id + ".pdf";
-
-                    const params = {
-                        Bucket: process.env.S3_BUCKET,
-                        Key: filename,
-                        Body: pdfBuffer,
-                        ContentType: 'application/pdf'
-                    };
-
-                    const data = await s3.upload(params).promise();
-
-                    pdflocation = data.Location;
-                    console.log(`File uploaded successfully. ${data.Location}`);
-
-                    await ChecklistPit.updateOne(
-                        { _id: checkList._id },
-                        { pdflink: pdflocation }
-                    );
-
-                    return res.status(200).send({ success: true, pdflink: pdflocation });
-                } catch(err){
-                    if (page) {
                         try {
-                            await page.close();
-                        } catch (pageErr) {
-                            console.log(pageErr);
-                        }
-                    }
+                            const remotePath = process.env.CHROMIUM_REMOTE_EXEC_PATH;
 
-                    if (browser) {
-                        try {
+                            if (!remotePath) {
+                                throw new Error('CHROMIUM_REMOTE_EXEC_PATH não configurado');
+                            }
+
+                            browser = await puppeteer.launch({
+                                args: chromium.args,
+                                defaultViewport: chromium.defaultViewport,
+                                executablePath: await chromium.executablePath(remotePath),
+                                headless: chromium.headless
+                            });
+
+                            const page = await browser.newPage();
+
+                            await page.setContent(html, {
+                                waitUntil: 'networkidle0'
+                            });
+
+                            const pdfBuffer = await page.pdf({
+                                format: "A4",
+                                printBackground: true,
+                                timeout: 100000
+                            });
+
                             await browser.close();
-                        } catch (closeErr) {
-                            console.log(closeErr);
+
+                            const s3 = new AWS.S3({
+                                accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+                                secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+                            });
+
+                            const filename = checkList._id + ".pdf";
+
+                            const params = {
+                                Bucket: process.env.S3_BUCKET,
+                                Key: filename,
+                                Body: pdfBuffer,
+                                ContentType: 'application/pdf'
+                            };
+
+                            const data = await s3.upload(params).promise();
+
+                            pdflocation = data.Location;
+                            console.log(`File uploaded successfully. ${data.Location}`);
+
+                            await ChecklistPit.updateOne(
+                                { _id: checkList._id },
+                                { pdflink: pdflocation }
+                            );
+
+                            return res.status(200).send({ success: true, pdflink: pdflocation });
+                        } catch(err){
+                            if (browser) {
+                                try {
+                                    await browser.close();
+                                } catch (closeErr) {
+                                    console.log(closeErr);
+                                }
+                            }
+
+                            console.log("Erro: " + err);
+                            return res.status(400).send({ error: "Erro ao gerar PDF" });
                         }
                     }
-
-                    console.log("Erro: " + err);
-                    return res.status(400).send({ error: "Erro ao gerar PDF" });
                 }
-            } catch (err) {
-                console.log("Erro geral: " + err);
-                return res.status(400).send({ error: "Erro ao processar a solicitação" });
-            }
-        });
+            );
+        } catch (err) {
+            console.log("Erro geral: " + err);
+            return res.status(400).send({ error: "Erro ao processar a solicitação" });
+        }
     }
 };
