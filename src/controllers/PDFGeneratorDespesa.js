@@ -51,7 +51,7 @@ module.exports = {
                         defaultViewport: chromium.defaultViewport,
                         executablePath: await chromium.executablePath(remotePath),
                         headless: chromium.headless,
-                        protocolTimeout: 500000
+                        protocolTimeout: 600000
                     });
 
                     page = await browser.newPage();
@@ -76,7 +76,7 @@ module.exports = {
                             left: "10mm",
                             right: "10mm"
                         },
-                        timeout: 500000
+                        timeout: 600000
                     });
 
                     await page.close();
