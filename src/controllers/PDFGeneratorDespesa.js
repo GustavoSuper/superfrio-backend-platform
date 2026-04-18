@@ -51,7 +51,7 @@ module.exports = {
                         defaultViewport: chromium.defaultViewport,
                         executablePath: await chromium.executablePath(remotePath),
                         headless: chromium.headless,
-                        protocolTimeout: 120000
+                        protocolTimeout: 500000
                     });
 
                     page = await browser.newPage();
