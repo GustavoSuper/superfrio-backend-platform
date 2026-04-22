@@ -5,7 +5,7 @@ const ChecklistCompItem = require('../model/DespesaItem');
 var path = require('path');
 const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium-min');
-const { runPdfJob } = require('../utils/pdfQueue');
+const { runPdfJob, enablePdfImageOptimization } = require('../utils/pdfQueue');
 
 module.exports = {
 
@@ -55,6 +55,8 @@ module.exports = {
                     });
 
                     page = await browser.newPage();
+
+                    await enablePdfImageOptimization(page);
 
                     await page.setContent(html, {
                         waitUntil: 'networkidle0'
