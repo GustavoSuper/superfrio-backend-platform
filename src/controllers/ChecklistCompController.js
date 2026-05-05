@@ -392,9 +392,10 @@ module.exports = {
   },
 
   async store(req, res) {
-    const CompItens = await ChecklistItemDefault.find({ type: "comp" }).sort({
-      ordemitem: 1,
-    });
+    const CompItens = await ChecklistItemDefault.find({ type: "comp" })
+      .select({ ordemitem: 1, nomeitem: 1 })
+      .sort({ ordemitem: 1 })
+      .lean();
 
     // const CompItensExit = await ChecklistItemExitDefault.find({ type: "compExit" }).sort({
     //   ordemitem: 1,
@@ -486,15 +487,15 @@ module.exports = {
       obsgeral,
     });
 
-    const checklistdoc = await ChecklistComp.findOne({ nos });
+    const checklistId = returnPost._id;
 
-    CompItens.forEach(async function (item) {
-      await ChecklistCompItem.create({
+    await ChecklistCompItem.insertMany(
+      CompItens.map((item) => ({
         ordemitem: item.ordemitem,
         nomeitem: item.nomeitem,
-        idchecklistcomp: checklistdoc._id,
-      });
-    });
+        idchecklistcomp: checklistId,
+      }))
+    );
 
     // CompItensExit.forEach(async function (item) {
     //   await ChecklistCompItemExit.create({
