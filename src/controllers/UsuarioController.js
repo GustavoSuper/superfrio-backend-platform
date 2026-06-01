@@ -1,4 +1,5 @@
 const Usuario = require('../model/Usuario');
+const Despesa = require('../model/Despesa');
 const nodemailer = require('nodemailer');
 const hbs = require('nodemailer-express-handlebars');
 var CryptoJS = require("crypto-js");
@@ -145,7 +146,21 @@ module.exports = {
     },
 
     async update(req, res) {
-        const returnUpdate = await Usuario.updateOne({ _id: req.params.id }, req.body);
+        const updateBody = { ...req.body };
+        if (typeof updateBody.nome !== "undefined" && updateBody.nome !== null) {
+            updateBody.nome = String(updateBody.nome).trim().toUpperCase();
+        }
+
+        const returnUpdate = await Usuario.updateOne({ _id: req.params.id }, updateBody);
+
+        const user = await Usuario.findOne({ _id: req.params.id });
+        if (user && user.nome) {
+            const nomeUpper = String(user.nome).trim().toUpperCase();
+            const userIdStr = String(user._id);
+            await Despesa.updateMany({ idrequester: userIdStr }, { nomerequester: nomeUpper });
+            await Despesa.updateMany({ idaprovador: userIdStr }, { nomeaprovador: nomeUpper });
+        }
+
         return res.json(returnUpdate)
     },
 
@@ -157,6 +172,8 @@ module.exports = {
     async store(req, res) {
         const { nome, email, pwd, validado, telefone, centro_custo, admin, access_comp, access_pit, access_web, access_rack, access_despesa, web_appr, desp_appr, access_app, area, idarea, receive_final_despesa } = req.body;
 
+        const nomeUpper = typeof nome === "undefined" || nome === null ? nome : String(nome).trim().toUpperCase();
+
         const returnCount = await Usuario.countDocuments({ email: email });
         if (returnCount > 0)
             return res.status(200).send({ error: "O e-mail informado já está cadastrado." });
@@ -166,7 +183,7 @@ module.exports = {
             return res.status(200).send({ error: "O telefone informado já está cadastrado." });
 
         await Usuario.create({
-            nome,
+            nome: nomeUpper,
             email,
             pwd,
             validado,
@@ -248,7 +265,7 @@ module.exports = {
                 text: 'Bem vindo(a) ao App Superfrio',
                 template: 'index',
                 context: {
-                    nome: nome,
+                    nome: nomeUpper,
                     //action_url: 'https://superfrio.netlify.app/validausuario/' + user._id,
                     action_url: 'https://superfrio.netlify.app',
                     support_email: 'mailto:app@superfriosr.com.br'

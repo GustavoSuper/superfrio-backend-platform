@@ -1,5 +1,40 @@
 const DespesaItem = require('../model/DespesaItem');
+const Usuario = require('../model/Usuario');
 const mongoose = require('mongoose');
+
+async function addRequesterArea(items) {
+    const requesterIds = items
+        .map((item) => Array.isArray(item.iddespesa) ? item.iddespesa[0] : item.iddespesa)
+        .map((despesa) => despesa && despesa.idrequester)
+        .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
+
+    const users = await Usuario.find({ _id: { $in: requesterIds } }).select("_id area").lean();
+    const usersById = users.reduce((acc, user) => {
+        acc[String(user._id)] = user;
+        return acc;
+    }, {});
+
+    return items.map((item) => {
+        if (Array.isArray(item.iddespesa)) {
+            const despesas = item.iddespesa.map((despesa) => ({
+                ...despesa,
+                requesterArea: usersById[String(despesa.idrequester)]?.area || ""
+            }));
+            return {
+                ...item,
+                iddespesa: despesas,
+                requesterArea: despesas[0]?.requesterArea || ""
+            };
+        }
+
+        const requesterArea = usersById[String(item.iddespesa?.idrequester)]?.area || "";
+        return {
+            ...item,
+            iddespesa: item.iddespesa ? { ...item.iddespesa, requesterArea } : item.iddespesa,
+            requesterArea
+        };
+    });
+}
 
 
 module.exports = {
@@ -32,7 +67,7 @@ module.exports = {
             }
         ]);
     
-        return res.json(returnGet);
+        return res.json(await addRequesterArea(returnGet));
       },
 
     async seletedAggreg(req, res){
@@ -41,6 +76,14 @@ module.exports = {
 
         if(!selectedItems){
             return res.status(400).json({msg: "Nenhum item selecionado"})
+        }
+
+        const ids = selectedItems
+            .map((id) => String(id))
+            .filter((id) => mongoose.Types.ObjectId.isValid(id));
+
+        if (ids.length === 0) {
+            return res.status(400).json({ msg: "Nenhum item válido selecionado" });
         }
 
         const returnGet = await DespesaItem.aggregate([
@@ -67,12 +110,12 @@ module.exports = {
             },
             {
                 $match: {
-                    "iddespesa._id": { $in: selectedItems.map(id => mongoose.Types.ObjectId(id)) }
+                    "iddespesa._id": { $in: ids.map(id => mongoose.Types.ObjectId(id)) }
                 }
             }
         ]);
 
-        return res.json(returnGet);   
+        return res.json(await addRequesterArea(returnGet));   
       },
 
     async show(req, res){
@@ -86,7 +129,30 @@ module.exports = {
     },
 
     async update(req, res){
-        const returnUpdate = await DespesaItem.updateOne({ _id: req.params.id },req.body);
+        const allowedFields = [
+            "descr",
+            "foto",
+            "fotoSeq",
+            "valor",
+            "categoria",
+            "categoriaText",
+            "status",
+            "commaprovadorItem",
+            "iddespesa"
+        ];
+        const updateBody = {};
+
+        allowedFields.forEach((field) => {
+            if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+                updateBody[field] = req.body[field];
+            }
+        });
+
+        if (Object.keys(updateBody).length === 0) {
+            return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
+        }
+
+        const returnUpdate = await DespesaItem.updateOne({ _id: req.params.id }, updateBody);
         return res.json(returnUpdate)
     },
 

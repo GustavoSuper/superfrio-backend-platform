@@ -1,112 +1,357 @@
 <!DOCTYPE html>
-<html Lang="en" >
-
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8">
-    
 
     <style type="text/css">
-      h1 {font-size: 8pt;}
-      p {margin:10; margin-bottom: 8; font-size: 7pt;}
-      table, td {
-        border-top: 1px solid #b3b3b3;
-        border-bottom: 1px solid #b3b3b3;
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: #202124;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8pt;
+        background: #ffffff;
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        color: #23527c;
+        font-size: 12pt;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+
+      table {
+        width: 100%;
         border-collapse: collapse;
-        font-size: 8pt;
       }
-      td p {
-        font-size: 8pt;
-      }
+
       th {
-        border-bottom: 1px solid #a3a3a3;
-        border-collapse: collapse;
-        background-color: #e3e3e3;
-        font-size: 7pt;
+        padding: 5px 7px;
+        color: #ffffff;
+        border: 1px solid #23527c;
+        background-color: #23527c;
+        font-size: 8pt;
+        text-align: left;
+        text-transform: uppercase;
       }
-      .imgLogo{
-        height: 30px;
+
+      td {
+        vertical-align: top;
       }
-      .imgItens{
-        image-orientation:from-image;
-        height: 60px;
+
+      .header {
+        margin-bottom: 10px;
+        border: 1px solid #d5dde5;
+        border-left: 5px solid #23527c;
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: #f8fbfd;
+      }
+
+      .header-table td {
+        border: 0;
+        vertical-align: middle;
+      }
+
+      .logo-cell {
+        width: 120px;
+        text-align: right;
+      }
+
+      .imgLogo {
+        height: 34px;
+      }
+
+      .number-box {
+        display: inline-block;
+        margin-top: 5px;
+        padding: 4px 8px;
+        border: 1px solid #23527c;
+        border-radius: 6px;
+        color: #23527c;
+        font-size: 9pt;
+        font-weight: bold;
+        background: #ffffff;
+      }
+
+      .section {
+        margin-bottom: 8px;
+      }
+
+      .info-table td {
+        padding: 5px 7px;
+        border: 1px solid #d5dde5;
+        line-height: 1.35;
+      }
+
+      .info-table tr:first-child th {
+        border-radius: 7px 7px 0 0;
+      }
+
+      .info-label {
+        font-weight: bold;
+      }
+
+      .items-title {
+        margin: 10px 0 6px;
+        padding: 7px 9px;
+        border: 1px solid #23527c;
+        border-radius: 7px;
+        background-color: #23527c;
+        color: #ffffff;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .items-grid {
+        table-layout: fixed;
+      }
+
+      .item-cell {
+        width: 50%;
+        padding: 0 5px 10px 0;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .item-cell:nth-child(even) {
+        padding-right: 0;
+        padding-left: 5px;
+      }
+
+      .item-card {
+        min-height: 318px;
+        border: 1px solid #d5dde5;
+        border-radius: 8px;
+        background-color: #ffffff;
+        box-shadow: 0 1px 3px rgba(35, 82, 124, 0.12);
+        overflow: hidden;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .photo-wrap {
+        position: relative;
+        width: 100%;
+        height: 238px;
+        border-bottom: 1px solid #d5dde5;
+        background-color: #f5f7f9;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .imgItens {
+        width: 100%;
+        height: 238px;
+        object-fit: contain;
+        image-orientation: from-image;
+      }
+
+      .status {
+        display: inline-block;
+        min-width: 66px;
+        padding: 3px 7px;
+        border: 1px solid #9aa8b5;
+        border-radius: 999px;
+        background-color: #f3f6f8;
+        color: #202124;
+        font-size: 7.5pt;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .status-approved {
+        border-color: #3d8b58;
+        background-color: #e9f6ed;
+        color: #1f6b3a;
+      }
+
+      .status-rejected {
+        border-color: #bc4b4b;
+        background-color: #fbecec;
+        color: #9c2f2f;
+      }
+
+      .photo-status {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+      }
+
+      .item-body {
+        padding: 8px 9px 9px;
+      }
+
+      .item-heading {
+        display: table;
+        width: 100%;
+      }
+
+      .item-title,
+      .item-value {
+        display: table-cell;
+        vertical-align: top;
+      }
+
+      .item-title {
+        color: #202124;
+        font-size: 8.5pt;
+        font-weight: bold;
+        line-height: 1.25;
+      }
+
+      .item-value {
+        width: 78px;
+        color: #23527c;
+        font-size: 8.5pt;
+        font-weight: bold;
+        line-height: 1.25;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .description {
+        margin-top: 6px;
+        color: #3d4349;
+        font-size: 7.8pt;
+        line-height: 1.25;
+      }
+
+      .rejection-reason {
+        margin-top: 7px;
+        padding: 6px 7px;
+        border: 1px solid #f0c4c4;
+        border-radius: 7px;
+        background-color: #fff6f6;
+        color: #7d2525;
+        font-size: 7.8pt;
+        line-height: 1.25;
+      }
+
+      .rejection-reason strong {
+        color: #9c2f2f;
+      }
+
+      .footer {
+        margin-top: 12px;
+        padding-top: 7px;
+        border-top: 1px solid #d5dde5;
+        color: #3d4349;
+        font-size: 7.5pt;
+      }
+
+      .footer table td {
+        border: 0;
+      }
+
+      .footer-center {
+        text-align: center;
+      }
+
+      .footer-right {
+        text-align: right;
       }
     </style>
   </head>
 
   <body>
-    <div class="Docheader">
-      <table style="width: 100%;border: 0;">
-      <tr>
-        <td style="border: 0;">
-          <h1>RELATÓRIO DE DESPESAS - SUPERFRIO</h1>
-        </td>
-        <td style="border: 0;">
-          <img src="https://superfrio.netlify.app/static/media/logo.a6ef6318.png" class="imgLogo">
-        </td>
-      </tr>
-      <tr>
-        <td style="border-bottom: 0;">&nbsp;</td>
-        <td style="border-bottom: 0;">&nbsp;</td>
-      </tr>
-      <tr>
-        <td style="border: 0;width: 70%;"></td>
-        <td style="border: 0;width: 30%;"><strong><p>Número: <%= checklist.numero %> </p></strong></td>
-      </tr>
-      </table>
-      
-      <br/>
-      
-            
-      <table class="Dados" style="width:100%; border-bottom:0">
+    <%
+      const noPhoto = 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg';
+      const valorDevido = checklistItens.reduce((total, item) => {
+        return String(item.status) === '3' ? total + Number(item.valor || 0) : total;
+      }, 0);
+      const valorDevidoFormatado = new Intl.NumberFormat('pt-br',{style: 'currency', currency:'BRL'}).format(valorDevido);
+    %>
+
+    <div class="header">
+      <table class="header-table">
         <tr>
-          <th colspan="3">Informações Gerais</th>
+          <td>
+            <h1>Relatório de Despesas - Superfrio</h1>
+            <div class="number-box">Número: <%= checklist.numero %></div>
+          </td>
+          <td class="logo-cell">
+            <img src="https://superfrio.netlify.app/static/media/logo.a6ef6318.png" class="imgLogo">
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <table class="info-table">
+        <tr>
+          <th colspan="2">Informações Gerais</th>
         </tr>
         <tr>
           <td style="width:60%">
-            <p><strong>Requisitante:</strong> <%= checklist.nomerequester %></p>
-            <p><strong>Aprovador:</strong> <%= checklist.nomeaprovador %></p>
-            <p><strong>Valor:</strong> <%= valor %></p>
+            <p><span class="info-label">Requisitante:</span> <%= checklist.nomerequester %></p>
+            <p><span class="info-label">Aprovador:</span> <%= checklist.nomeaprovador %></p>
+            <p><span class="info-label">Valor:</span> <%= valor %></p>
+            <p><span class="info-label">Devido:</span> <%= valorDevidoFormatado %></p>
           </td>
           <td style="width:40%">
-            <p><strong>Criado em:</strong> <%= dataentrada %></p>
-            <p><strong>Status:</strong> <%= checklist.status == 2 ? "Finalizado" : "Reprovado" %></p>
+            <p><span class="info-label">Criado em:</span> <%= dataentrada %></p>
+            <p><span class="info-label">Status:</span> <%= checklist.status == 2 ? "Finalizado" : "Reprovado" %></p>
           </td>
-          
         </tr>
       </table>
-     
-      
     </div>
-    <div class="ItensChecklist">
-      <table style="width:100%">
-        <!-- <tr>
-          <th>Foto</th>
-          <th>Item</th>
-          <th>Avaliação</th>
-        </tr> -->
+
+    <div class="items-title">NF's / Recibos</div>
+
+    <table class="items-grid">
+      <% for (var i = 0; i < itensLength; i += 2) { %>
         <tr>
-          <th colspan="4">NF's / Recibos</th>
+          <% for (var col = 0; col < 2; col++) { %>
+            <%
+              var item = checklistItens[i + col];
+            %>
+            <% if (item) { %>
+              <td class="item-cell">
+                <div class="item-card">
+                  <div class="photo-wrap">
+                    <img src="<%= item.foto == null ? noPhoto : item.foto %>" class="imgItens"/>
+                    <span class="status photo-status <%= String(item.status) === '3' ? 'status-rejected' : 'status-approved' %>">
+                      <%= String(item.status) === '3' ? 'Reprovado' : 'Aprovado' %>
+                    </span>
+                  </div>
+                  <div class="item-body">
+                    <div class="item-heading">
+                      <p class="item-title"><%= item.categoriaText %></p>
+                      <p class="item-value"><%= new Intl.NumberFormat('pt-br',{style: 'currency', currency:'BRL'}).format(item.valor) %></p>
+                    </div>
+                    <p class="description"><span class="info-label">Descrição:</span> <%= item.descr %></p>
+                    <% if (String(item.status) === '3' && item.commaprovadorItem) { %>
+                      <p class="rejection-reason"><strong>Motivo da recusa:</strong> <%= item.commaprovadorItem %></p>
+                    <% } %>
+                  </div>
+                </div>
+              </td>
+            <% } else { %>
+              <td class="item-cell"></td>
+            <% } %>
+          <% } %>
         </tr>
-        
-        <% for(var i=0; i < itensLength; i++) { %>
+      <% } %>
+    </table>
 
-          <tr>
-            <td style="width: 25%;"><img src="<%= checklistItens[i].foto == null ? 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg' : checklistItens[i].foto %>" class="imgItens"/></td>
-            <td style="width: 20%;"><p><%= checklistItens[i].categoriaText %></p></td>
-            <td style="width: 30%;"><p><%= checklistItens[i].descr %></p></td>
-            <td style="width: 25%;"><p><%= new Intl.NumberFormat('pt-br',{style: 'currency', currency:'BRL'}).format(checklistItens[i].valor)%> </p></td>
-          </tr>
-
-        <% } %>
+    <div class="footer">
+      <table>
+        <tr>
+          <td><strong>Relatório:</strong> Despesas</td>
+          <td class="footer-center"><strong>Total:</strong> <%= valor %></td>
+          <td class="footer-right"><strong>Número:</strong> <%= checklist.numero %></td>
+        </tr>
       </table>
-    
-      </table>
-
-      <div style="page-break-before:always;"></div>
-
-    </div>
-    
-
     </div>
   </body>
 </html>

@@ -40,6 +40,19 @@ const DespesaSchema = new Schema({
     obsgeral: {
         type: String,
         required: false
+    },
+    approvedAt: {
+        type: Date,
+        required: false
+    },
+    paid: {
+        type: Boolean,
+        required: false,
+        default: false
+    },
+    paidAt: {
+        type: Date,
+        required: false
     }
 }, {
     timestamps: true

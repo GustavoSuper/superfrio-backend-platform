@@ -1,222 +1,430 @@
 <!DOCTYPE html>
-<html Lang="en" >
-
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8">
-    
 
     <style type="text/css">
-      h1 {font-size: 8pt;}
-      p {margin:10; margin-bottom: 8; font-size: 7pt;}
-      table, td {
-        border-top: 1px solid #b3b3b3;
-        border-bottom: 1px solid #b3b3b3;
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: #202124;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8pt;
+        background: #ffffff;
+      }
+
+      h1,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        color: #23527c;
+        font-size: 12pt;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+
+      table {
+        width: 100%;
         border-collapse: collapse;
-        font-size: 8pt;
       }
-      td p {
-        font-size: 8pt;
-      }
+
       th {
-        border-bottom: 1px solid #a3a3a3;
-        border-collapse: collapse;
-        background-color: #e3e3e3;
-        font-size: 7pt;
+        padding: 5px 7px;
+        color: #ffffff;
+        border: 1px solid #23527c;
+        background-color: #23527c;
+        font-size: 8pt;
+        text-align: left;
+        text-transform: uppercase;
       }
-      .imgLogo{
-        height: 30px;
+
+      td {
+        vertical-align: top;
       }
-      .imgItens{
-        image-orientation:from-image;
-        height: 60px;
-        /* width: auto;
-        max-width: 100%;
-        display: block;
-        margin: 0 auto; */
+
+      .header {
+        margin-bottom: 10px;
+        border: 1px solid #d5dde5;
+        border-left: 5px solid #23527c;
+        border-radius: 8px;
+        padding: 10px 12px;
+        background: #f8fbfd;
+      }
+
+      .header-table td {
+        border: 0;
+        vertical-align: middle;
+      }
+
+      .logo-cell {
+        width: 120px;
+        text-align: right;
+      }
+
+      .imgLogo {
+        height: 34px;
+      }
+
+      .os-box {
+        display: inline-block;
+        margin-top: 5px;
+        padding: 4px 8px;
+        border: 1px solid #23527c;
+        border-radius: 6px;
+        color: #23527c;
+        font-size: 9pt;
+        font-weight: bold;
+        background: #ffffff;
+      }
+
+      .section {
+        margin-bottom: 8px;
+      }
+
+      .info-table td {
+        padding: 5px 7px;
+        border: 1px solid #d5dde5;
+        line-height: 1.35;
+      }
+
+      .info-table tr:first-child th {
+        border-radius: 7px 7px 0 0;
+      }
+
+      .info-label {
+        font-weight: bold;
+      }
+
+      .items-title {
+        margin: 10px 0 6px;
+        padding: 7px 9px;
+        border: 1px solid #23527c;
+        border-radius: 7px;
+        background-color: #23527c;
+        color: #ffffff;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .items-subtitle {
+        margin: 12px 0 6px;
+        padding: 6px 9px;
+        border: 1px solid #d5dde5;
+        border-left: 5px solid #23527c;
+        border-radius: 7px;
+        background: #f8fbfd;
+        color: #23527c;
+        font-weight: bold;
+        text-transform: uppercase;
+      }
+
+      .items-grid {
+        table-layout: fixed;
+      }
+
+      .item-cell {
+        width: 50%;
+        padding: 0 5px 10px 0;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .item-cell:nth-child(even) {
+        padding-right: 0;
+        padding-left: 5px;
+      }
+
+      .item-card {
+        min-height: 318px;
+        border: 1px solid #d5dde5;
+        border-radius: 8px;
+        background-color: #ffffff;
+        box-shadow: 0 1px 3px rgba(35, 82, 124, 0.12);
+        overflow: hidden;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+
+      .photo-wrap {
+        position: relative;
+        width: 100%;
+        height: 238px;
+        border-bottom: 1px solid #d5dde5;
+        background-color: #f5f7f9;
+        text-align: center;
+        overflow: hidden;
+      }
+
+      .imgItens {
+        width: 100%;
+        height: 238px;
+        object-fit: contain;
+        image-orientation: from-image;
+      }
+
+      .item-body {
+        padding: 8px 9px 9px;
+      }
+
+      .item-heading {
+        display: table;
+        width: 100%;
+      }
+
+      .item-name,
+      .item-status-inline {
+        display: table-cell;
+        vertical-align: top;
+      }
+
+      .item-name {
+        font-size: 8.5pt;
+        font-weight: bold;
+        line-height: 1.25;
+        color: #202124;
+      }
+
+      .item-status-inline {
+        width: 64px;
+        text-align: right;
+      }
+
+      .status-line {
+        margin-top: 5px;
+      }
+
+      .status {
+        display: inline-block;
+        min-width: 58px;
+        padding: 3px 7px;
+        border: 1px solid #9aa8b5;
+        border-radius: 999px;
+        background-color: #f3f6f8;
+        color: #202124;
+        font-size: 7.5pt;
+        font-weight: bold;
+        text-align: center;
+      }
+
+      .photo-status {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+      }
+
+      .status-good {
+        border-color: #3d8b58;
+        background-color: #e9f6ed;
+        color: #1f6b3a;
+      }
+
+      .status-bad {
+        border-color: #bc4b4b;
+        background-color: #fbecec;
+        color: #9c2f2f;
+      }
+
+      .status-missing {
+        border-color: #b37a1f;
+        background-color: #fff5df;
+        color: #875b13;
+      }
+
+      .comment {
+        margin-top: 6px;
+        color: #3d4349;
+        font-size: 7.8pt;
+        line-height: 1.25;
+      }
+
+      .comments-table {
+        margin-top: 4px;
+      }
+
+      .comments-table td {
+        min-height: 42px;
+        padding: 7px;
+        border: 1px solid #d5dde5;
+        line-height: 1.35;
+      }
+
+      .not-applicable-list {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 5px;
+      }
+
+      .not-applicable-list td {
+        padding: 7px 9px;
+        border: 1px solid #d5dde5;
+        border-radius: 7px;
+        background: #ffffff;
+        line-height: 1.3;
+      }
+
+      .not-applicable-title {
+        color: #23527c;
+        font-weight: bold;
+      }
+
+      .not-applicable-comment {
+        margin-top: 3px;
+        color: #3d4349;
+        font-size: 7.8pt;
+      }
+
+      .footer {
+        margin-top: 12px;
+        padding-top: 7px;
+        border-top: 1px solid #d5dde5;
+        color: #3d4349;
+        font-size: 7.5pt;
+      }
+
+      .footer table td {
+        border: 0;
+      }
+
+      .footer-center {
+        text-align: center;
+      }
+
+      .footer-right {
+        text-align: right;
       }
     </style>
   </head>
 
   <body>
-    <div class="Docheader">
-      <table style="width: 100%;border: 0;">
-      <tr>
-        <td style="border: 0;">
-          <h1>REGISTRO FOTOGRÁFICO – COMPRESSOR - SUPERFRIO</h1>
-        </td>
-        <td style="border: 0;">
-          <img src="https://superfrio.netlify.app/static/media/logo.a6ef6318.png" class="imgLogo">
-        </td>
-      </tr>
-      <tr>
-        <td style="border-bottom: 0;">&nbsp;</td>
-        <td style="border-bottom: 0;">&nbsp;</td>
-      </tr>
-      <tr>
-        <td style="border: 0;width: 70%;"></td>
-        <td style="border: 0;width: 30%;"><strong><p>OS: <%= checklist.nos %> </p></strong></td>
-      </tr>
-      </table>
-      
-      <br/>
-      
-            
-      <table class="Dados" style="width:100%; border-bottom:0">
+    <%
+      const noPhoto = 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg';
+      const getStatusText = (avaliacao) => avaliacao == 0 ? 'Bom' : avaliacao == 1 ? 'Ruim' : 'Faltante';
+      const getStatusClass = (avaliacao) => avaliacao == 0 ? 'status-good' : avaliacao == 1 ? 'status-bad' : 'status-missing';
+      const normalizeText = (text) => text.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const isNaoSeAplica = (item) => item && item.comentario && normalizeText(item.comentario) === 'nao se aplica';
+      const itensAvaliados = checklistItens.filter((item) => !isNaoSeAplica(item));
+      const itensNaoSeAplica = checklistItens.filter(isNaoSeAplica);
+    %>
+
+    <div class="header">
+      <table class="header-table">
         <tr>
-          <th colspan="3">Informações Gerais</th>
+          <td>
+            <h1>Registro Fotográfico - Compressor - Superfrio</h1>
+            <div class="os-box">OS: <%= checklist.nos %></div>
+          </td>
+          <td class="logo-cell">
+            <img src="https://superfrio.netlify.app/static/media/logo.a6ef6318.png" class="imgLogo">
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <table class="info-table">
+        <tr>
+          <th colspan="2">Informações Gerais</th>
         </tr>
         <tr>
           <td style="width:60%">
-            <p><strong>Cliente:</strong> <%= checklist.idcliente.nome %></p>
-            <p><strong>Cidade / UF:</strong> <%= checklist.idcliente.cidade %> / <%= checklist.idcliente.uf %></p>
+            <p><span class="info-label">Cliente:</span> <%= checklist.idcliente.nome %></p>
+            <p><span class="info-label">Cidade / UF:</span> <%= checklist.idcliente.cidade %> / <%= checklist.idcliente.uf %></p>
           </td>
           <td style="width:40%">
-            <p><strong>Data Entrada:</strong> <%= dataentrada %></p>
-            <p><strong>Garantia?:</strong> <%= checklist.garantia == false ? "Não" : "Sim"%></p>
+            <p><span class="info-label">Data Entrada:</span> <%= dataentrada %></p>
+            <p><span class="info-label">Garantia:</span> <%= checklist.garantia == false ? "Não" : "Sim" %></p>
           </td>
-          <tr>
-            <th colspan="3">Informações do Compressor</th>
-          </tr>
-          <td style="border: 0;width: 60%;">
-            <p><strong>Fabricante:</strong> <%= checklist.idfabricante.nome %></p>
-            <p><strong>Modelo:</strong> <%= checklist.idcompressor.modelo %></p>
-            <p><strong>Tensão:</strong> <%= checklist.tensao %></p>
+        </tr>
+        <tr>
+          <th colspan="2">Informações do Compressor</th>
+        </tr>
+        <tr>
+          <td>
+            <p><span class="info-label">Fabricante:</span> <%= checklist.idfabricante.nome %></p>
+            <p><span class="info-label">Modelo:</span> <%= checklist.idcompressor.modelo %></p>
+            <p><span class="info-label">Tensão:</span> <%= checklist.tensao %></p>
           </td>
-          <td style="border: 0;width: 40%;">
-            <p><strong>N. Série:</strong> <%= checklist.nserie %></p>
-            <p><strong>N. Ativo:</strong> <%= checklist.nativo %></p>
-            <p><strong>Gás:</strong> <%= checklist.gas %></p>
+          <td>
+            <p><span class="info-label">N. Série:</span> <%= checklist.nserie %></p>
+            <p><span class="info-label">N. Ativo:</span> <%= checklist.nativo %></p>
+            <p><span class="info-label">Gás:</span> <%= checklist.gas %></p>
           </td>
-          
         </tr>
       </table>
-     
-      
     </div>
-    <div class="ItensChecklist">
-      <table style="width:100%">
-        <!-- <tr>
-          <th>Foto</th>
-          <th>Item</th>
-          <th>Avaliação</th>
-        </tr> -->
+
+    <div class="items-title">Avarias</div>
+
+    <table class="items-grid">
+      <% for (var i = 0; i < itensAvaliados.length; i += 2) { %>
         <tr>
-          <th colspan="3">Avarias</th>
+          <% for (var col = 0; col < 2; col++) { %>
+            <%
+              var item = itensAvaliados[i + col];
+            %>
+            <% if (item) { %>
+              <td class="item-cell">
+                <div class="item-card">
+                  <div class="photo-wrap">
+                    <img src="<%= item.foto ? item.foto : noPhoto %>" class="imgItens"/>
+                    <span class="status photo-status <%= getStatusClass(item.avaliacao) %>"><%= getStatusText(item.avaliacao) %></span>
+                  </div>
+                  <div class="item-body">
+                    <div class="item-heading">
+                      <p class="item-name"><%= item.nomeitem %></p>
+                    </div>
+                    <% if (item.comentario) { %>
+                      <p class="comment"><span class="info-label">Comentário:</span> <%= item.comentario %></p>
+                    <% } %>
+                  </div>
+                </div>
+              </td>
+            <% } else { %>
+              <td class="item-cell"></td>
+            <% } %>
+          <% } %>
         </tr>
-        
-        <% for(var i=0; i < 7; i++) { %>
+      <% } %>
+    </table>
 
+    <% if (itensNaoSeAplica.length > 0) { %>
+      <div class="items-subtitle">Não se aplica</div>
+
+      <table class="not-applicable-list">
+        <% for (var i = 0; i < itensNaoSeAplica.length; i++) { %>
           <tr>
-            <td style="width: 25%;"><img src="<%= checklistItens[i].foto == null ? 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg' : checklistItens[i].foto %>" class="imgItens"/></td>
-            <td style="width: 35%;"><p><%= checklistItens[i].nomeitem %></p></td>
-            <td style="width: 40%;"><p><%= checklistItens[i].avaliacao == 0 ? "Bom" : checklistItens[i].avaliacao == 1 ? "Ruim" : "Faltante" %> <%= checklistItens[i].comentario ? ' - ' + checklistItens[i].comentario : '' %> </p></td>
+            <td>
+              <p class="not-applicable-title"><%= itensNaoSeAplica[i].nomeitem %></p>
+              <p class="not-applicable-comment"><span class="info-label">Comentário:</span> <%= itensNaoSeAplica[i].comentario %></p>
+            </td>
           </tr>
-
         <% } %>
       </table>
-      
-      <div style="page-break-before:always;"></div>
-        
-      <table style="width:100%;margin-top: 10px;">
-        <% for(var i=7; i < 19 && i < itensLength; i++) { %>
+    <% } %>
 
-          <tr>
-            <td colspan="3" style="width: 100%; padding-top: 6px; padding-bottom: 6px;">
-              <img src="<%= checklistItens[i] && checklistItens[i].foto ? checklistItens[i].foto : 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg' %>" class="imgItens"/>
-            </td>
-          </tr>
-          <tr>
-            <td colspan="3" style="width: 100%;">
-              <p><strong><%= checklistItens[i] ? checklistItens[i].nomeitem : '' %></strong></p>
-              <p><%= checklistItens[i] ? (checklistItens[i].avaliacao == 0 ? "Bom" : checklistItens[i].avaliacao == 1 ? "Ruim" : "Faltante") : '' %><%= checklistItens[i] && checklistItens[i].comentario ? ' - ' + checklistItens[i].comentario : '' %></p>
-            </td>
-          </tr>
-  
-          <% } %>
-
-      </table>
-
-      <div style="page-break-before:always;"></div>
-
-      <table style="width:100%;margin-top: 10px;">
-        <% for(var i=19; i < 31 && i < itensLength; i++) { %>
-
-          <tr>
-            <td colspan="3" style="width: 100%; padding-top: 6px; padding-bottom: 6px;">
-              <img src="<%= checklistItens[i] && checklistItens[i].foto ? checklistItens[i].foto : 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg' %>" class="imgItens"/>
-            </td>
-          </tr>
-          <tr>
-            <td colspan="3" style="width: 100%;">
-              <p><strong><%= checklistItens[i] ? checklistItens[i].nomeitem : '' %></strong></p>
-              <p><%= checklistItens[i] ? (checklistItens[i].avaliacao == 0 ? "Bom" : checklistItens[i].avaliacao == 1 ? "Ruim" : "Faltante") : '' %><%= checklistItens[i] && checklistItens[i].comentario ? ' - ' + checklistItens[i].comentario : '' %></p>
-            </td>
-          </tr>
-  
-          <% } %>
-
-      </table>
-
-      <div style="page-break-before:always;"></div>
-
-      <table style="width:100%;margin-top: 10px;">
-        <% for(var i=31; i < itensLength; i++) { %>
-
-          <tr>
-            <td colspan="3" style="width: 100%; padding-top: 6px; padding-bottom: 6px;">
-              <img src="<%= checklistItens[i].foto == null ? 'https://triunfo.pe.gov.br/pm_tr430/wp-content/uploads/2018/03/sem-foto-300x300.jpg' : checklistItens[i].foto %>" class="imgItens"/>
-            </td>
-          </tr>
-          <tr>
-            <td colspan="3" style="width: 100%;">
-              <p><strong><%= checklistItens[i].nomeitem %></strong></p>
-              <p><%= checklistItens[i].avaliacao == 0 ? "Bom" : checklistItens[i].avaliacao == 1 ? "Ruim" : "Faltante" %><%= checklistItens[i].comentario ? ' - ' + checklistItens[i].comentario : '' %></p>
-            </td>
-          </tr>
-  
-          <% } %>
-
-      </table>
-
-    </div>
-    
-    
-
-    <table class="respTecnico" style='width:100%;border: 0;'>
+    <table class="comments-table">
       <tr>
-        <th>Comentários:</th>
-      </tr>
-     <tr>
-        <td>
-          <p><%= checklist.comentarios %></p>
-        </td>
+        <th>Comentários Gerais</th>
       </tr>
       <tr>
-        <td>
-          <p>&nbsp;</p>
-        </td>
+        <td><%= checklist.comentarios %></td>
       </tr>
-      </tr>
-      
-    </table>
-      <br/>
-      <br/>
-
-    <table class="respTecnico" style='width:100%;border-top: 0;border-bottom: 0;'>
-      <tr>
-        <td style="border-top: 0;">
-          <div style="display: flex; justify-content: space-between;">
-            <span><strong>Contato:</strong> (11) 4599-5239</span>
-            <span><strong>Email:</strong> compressores@superfriosr.com.br</span>
-            <span><strong>CNPJ:</strong> 18.553.796/0001-75</span>
-          </div>
-        </td>
-      </tr>  
-      <!-- <tr>
-        <td  style='border-bottom: 0;'><p></p></td>
-      </tr>   -->
     </table>
 
+    <div class="footer">
+      <table>
+        <tr>
+          <td><strong>Contato:</strong> (11) 4599-5239</td>
+          <td class="footer-center"><strong>Email:</strong> compressores@superfriosr.com.br</td>
+          <td class="footer-right"><strong>CNPJ:</strong> 18.553.796/0001-75</td>
+        </tr>
+      </table>
     </div>
   </body>
 </html>

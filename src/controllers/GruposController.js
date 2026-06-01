@@ -14,7 +14,9 @@ module.exports = {
             if(!grupo){ return res.status(404).json({sucess: false, msg: "Grupo não encotrado"})}
 
             const RackItens = await ChecklistItemDefault.find({ type:'rack' }).sort({ordemitem: 1});
-            const itensFiltrados = await RackItens.filter(objeto => grupo.itensRack.includes(objeto._id));
+
+            const itensRackSet = new Set((grupo.itensRack || []).map((id) => id.toString()));
+            const itensFiltrados = RackItens.filter((objeto) => itensRackSet.has(objeto._id.toString()));
 
             const returnGet = {
                 nome: grupo.nome,

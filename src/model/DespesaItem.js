@@ -25,6 +25,14 @@ const DespesaItemSchema = new Schema({
         type: String,
         required: true
     },
+    status: {
+        type: String,
+        default: "1"
+    },
+    commaprovadorItem: {
+        type: String,
+        required: false
+    },
     iddespesa: {
         type: Schema.Types.ObjectId,
         ref: 'Despesa'

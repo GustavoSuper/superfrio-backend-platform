@@ -407,15 +407,17 @@ module.exports = {
             chave
         });
 
-        const checklistdoc = await ChecklistPit.findOne({ controlid: controlid });
+        const checklistId = returnPost._id;
 
-        PitItens.forEach(async function(item){
-            await ChecklistPitItem.create({
-                ordemitem: item.ordemitem,
-                nomeitem: item.nomeitem,
-                idchecklistpit: checklistdoc._id
-            });
-        });
+        await Promise.all(
+            PitItens.map((item) =>
+                ChecklistPitItem.create({
+                    ordemitem: item.ordemitem,
+                    nomeitem: item.nomeitem,
+                    idchecklistpit: checklistId
+                })
+            )
+        );
 
         return res.json(returnPost);
     },

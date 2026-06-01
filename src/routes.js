@@ -42,6 +42,7 @@ routes.post('/generatePDF/:id', PDFGenerator.create);
 routes.post('/generatePDFPit/:id', PDFGeneratorPit.create);
 routes.post('/generatePDFRack/:id', PDFGeneratorRack.create);
 routes.post('/generatePDFDespesa/:id', PDFGeneratorDespesa.create);
+routes.post('/generatePDFDespesaFotos/selected', PDFGeneratorDespesa.createSelectedPhotos);
 
 routes.get('/alive', CatalogoController.alive);
 
@@ -200,6 +201,7 @@ routes.get('/despesa/status/pending/:id', Despesa.showByPending);
 routes.get('/despesa/status/apprej/:id', Despesa.showByAppRej);
 routes.get('/despesa/requester/count/:id', Despesa.countByRequester);
 routes.get('/despesa/pending/count/:id', Despesa.countByPending);
+routes.post('/despesa/mark-paid/selected', Despesa.markSelectedAsPaid);
 routes.put('/despesa/:id', Despesa.update);
 routes.delete('/despesa/:id', Despesa.delete);
 

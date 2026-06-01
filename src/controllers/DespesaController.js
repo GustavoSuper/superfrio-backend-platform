@@ -9,68 +9,65 @@ module.exports = {
     async index(req, res){
         const { name, startDate, endDate } = req.query
 
-        //Cenarios
-        //01 - /despesas ==> Url sem query
-        //02 - /despesas?name=José ==> Apenas nome
-        //03 - /despesas?startDate=2022-05-12&endDate=2023-02-15 ==> Apenas intervalo
-        //04 - /despesas?name=José&startDate=2022-05-12&endDate=2023-02-15 ==> Nome e intervalo
+        const now = new Date();
+        const minDate = new Date(Date.UTC(now.getUTCFullYear() - 1, 0, 1));
 
-        //Cenario 01
-        if(!name && !startDate && !endDate){
-          const returnGet = await Despesa.find();
-          return res.json(returnGet)
-        }
+        const filter = {
+          dataentrada: { $gte: minDate }
+        };
 
-        //Cenario 02
-        if(name && !startDate && !endDate){
+        if (name) {
           const regex = new RegExp(name, 'i');
-          const returnGet = await Despesa.find({nomerequester: regex});
-    
-          return res.json(returnGet)
+          filter.nomerequester = regex;
         }
 
-        //Cenario 03
-        if(!name && startDate && endDate){
-          const returnGet = await Despesa.find({
-            updatedAt: {
-              $gte: new Date(startDate),
-              $lte: new Date(endDate)
-            }
-          });
-    
-          return res.json(returnGet)
+        if ((startDate && !endDate) || (!startDate && endDate)) {
+          return res.status(400).json({ error: "Informe startDate e endDate" });
         }
 
-        //Cenario 04
-        if(name && startDate && endDate){
-          const regex = new RegExp(name, 'i');
-          const returnGet = await Despesa.find({
-            nomerequester: regex,
-            updatedAt: {
-              $gte: new Date(startDate),
-              $lte: new Date(endDate)
-            }
-          });
-
-          return res.json(returnGet)
+        if (startDate && endDate) {
+          const start = new Date(startDate);
+          const end = new Date(endDate);
+          const startClamped = start < minDate ? minDate : start;
+          filter.dataentrada = { $gte: startClamped, $lte: end };
         }
 
-        return res.status(400)
+        const returnGet = await Despesa.find(filter).sort({ dataentrada: -1, createdAt: -1 }).lean();
+        const requesterIds = returnGet
+          .map((despesa) => despesa.idrequester)
+          .filter(Boolean);
+        const requesters = await Usuario.find({ _id: { $in: requesterIds } }).select("_id area").lean();
+        const requestersById = requesters.reduce((acc, requester) => {
+          acc[String(requester._id)] = requester;
+          return acc;
+        }, {});
+
+        const despesasWithArea = returnGet.map((despesa) => ({
+          ...despesa,
+          requesterArea: requestersById[String(despesa.idrequester)]?.area || ""
+        }));
+
+        return res.json(despesasWithArea)
     },
 
     async filter(req, res){
 
       const { name, startDate, endDate } = req.query;
 
-      const regex = new RegExp(clientName, 'i');
+      const filter = {};
 
-      const returnGet = await Despesa.find({
-        name: regex,
-        updatedAt: {
+      if (name) {
+        filter.nomerequester = new RegExp(name, 'i');
+      }
+
+      if (startDate && endDate) {
+        filter.updatedAt = {
           $gte: new Date(startDate),
           $lte: new Date(endDate)
-        }
-      });
+        };
+      }
+
+      const returnGet = await Despesa.find(filter);
 
       return res.json(returnGet)
     },
@@ -107,18 +104,82 @@ module.exports = {
   },
 
     async update(req, res){
-        const returnUpdate = await Despesa.updateOne({ _id: req.params.id },req.body);
-        const DespesaDoc = await Despesa.findOne({ _id: req.params.id });
-        const { status } = req.body;
+        const allowedFields = [
+          "dataentrada",
+          "status",
+          "pdflink",
+          "idrequester",
+          "nomerequester",
+          "idaprovador",
+          "nomeaprovador",
+          "commaprovador",
+          "obsgeral",
+          "paid",
+          "paidAt"
+        ];
+        const updateBody = {};
+
+        allowedFields.forEach((field) => {
+          if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+            updateBody[field] = req.body[field];
+          }
+        });
+
+        const { status } = updateBody;
         let messages = [];
 
+        if (Object.keys(updateBody).length === 0) {
+          return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
+        }
+
+        if (typeof status !== "undefined") {
+          if (String(status) === "2") {
+            updateBody.approvedAt = new Date();
+          } else {
+            updateBody.approvedAt = null;
+          }
+        }
+
+        if (typeof updateBody.paid !== "undefined") {
+          const paidValue = updateBody.paid === true || String(updateBody.paid) === "true";
+          updateBody.paid = paidValue;
+          if (paidValue) {
+            updateBody.paidAt = req.body.paidAt ? new Date(req.body.paidAt) : new Date();
+          } else {
+            updateBody.paidAt = null;
+          }
+        }
+
+        if (typeof updateBody.paid === "undefined" && Object.prototype.hasOwnProperty.call(updateBody, "paidAt")) {
+          updateBody.paidAt = updateBody.paidAt ? new Date(updateBody.paidAt) : null;
+          updateBody.paid = !!updateBody.paidAt;
+        }
+
+        if (updateBody.paidAt && Number.isNaN(updateBody.paidAt.getTime())) {
+          return res.status(400).json({ error: "Data de pagamento inválida" });
+        }
+
+        const returnUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
+        const DespesaDoc = await Despesa.findOne({ _id: req.params.id });
+
         if (status == "1") { //envia para aprovação
+          await DespesaItem.updateMany(
+            { iddespesa: req.params.id, status: { $nin: ["2", "3"] } },
+            { status: "1", commaprovadorItem: "" }
+          );
           const requester = await Usuario.find({ _id: DespesaDoc.idrequester });
           const reqArea = await DespesaAreaAppr.find({_id: requester[0].idarea});
           let user = await Usuario.find({ _id: reqArea[0].idaprovador });
 
           if(requester[0]._id == user[0]._id) {
-            const returnUpdate3 = await Despesa.updateOne({ _id: req.params.id },{idaprovador: user[0]._id, nomeaprovador: user[0].nome, status: 2});
+            const returnUpdate3 = await Despesa.updateOne(
+              { _id: req.params.id },
+              { idaprovador: user[0]._id, nomeaprovador: user[0].nome, status: 2, approvedAt: new Date() }
+            );
+            await DespesaItem.updateMany(
+              { iddespesa: req.params.id, status: { $ne: "3" } },
+              { status: "2" }
+            );
             if (user) {
               let transporter = nodemailer.createTransport({
                 host: process.env.EMAIL_SMTP,
@@ -255,6 +316,10 @@ module.exports = {
         }
 
         if (status == "2") { //aprova -- Incluir email final para o financeiro
+          await DespesaItem.updateMany(
+            { iddespesa: req.params.id, status: { $ne: "3" } },
+            { status: "2" }
+          );
           const user = await Usuario.find({ _id: DespesaDoc.idrequester });
           if (user) {
             let transporter = nodemailer.createTransport({
@@ -325,6 +390,10 @@ module.exports = {
         }
 
         if (status == "3") { //rejeita
+          await DespesaItem.updateMany(
+            { iddespesa: req.params.id },
+            { status: "3" }
+          );
           const user = await Usuario.find({ _id: DespesaDoc.idrequester });
           if (user) {
             let transporter = nodemailer.createTransport({
@@ -393,7 +462,43 @@ module.exports = {
         return res.json(returnUpdate)
     },
 
+    async markSelectedAsPaid(req, res) {
+      const selectedItems = Array.isArray(req.body?.selectedItems) ? req.body.selectedItems : [];
+
+      const ids = selectedItems
+        .map((id) => String(id))
+        .filter((id) => /^[a-fA-F0-9]{24}$/.test(id));
+
+      if (ids.length === 0) {
+        return res.status(400).json({ error: "Nenhum relatório válido selecionado" });
+      }
+
+      const paidAt = req.body?.paidAt ? new Date(req.body.paidAt) : new Date();
+
+      if (Number.isNaN(paidAt.getTime())) {
+        return res.status(400).json({ error: "Data de pagamento inválida" });
+      }
+
+      const returnUpdate = await Despesa.updateMany(
+        { _id: { $in: ids } },
+        { paid: true, paidAt }
+      );
+
+      return res.json({
+        success: true,
+        paidAt,
+        matchedCount: returnUpdate.matchedCount ?? returnUpdate.n,
+        modifiedCount: returnUpdate.modifiedCount ?? returnUpdate.nModified
+      });
+    },
+
     async delete(req, res){
+        const linkedItems = await DespesaItem.countDocuments({ iddespesa: req.params.id });
+
+        if (linkedItems > 0) {
+          return res.status(200).send({ error: "Não foi possível apagar. Existem itens atrelados a essa despesa." });
+        }
+
         const returnDel = await Despesa.deleteOne({ _id: req.params.id });
         return res.json(returnDel)
     },
@@ -482,7 +587,7 @@ async function sendFinalEmail(DespesaDoc, messages, transporter){
           //data: DespesaDoc.updatedAt,
           aprovador: DespesaDoc.nomeaprovador,
           obsgeral: DespesaDoc.obsgeral,
-          valor: DespesaItemValor[0].totalAmount,
+          valor: DespesaItemValor[0]?.totalAmount || 0,
           titulo: "Novo Relatório de despesas aprovado",
           status: "Aprovado",
           support_email: "mailto:app@superfriosr.com.br",
