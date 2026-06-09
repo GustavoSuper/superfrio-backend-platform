@@ -43,15 +43,16 @@ const DespesaSchema = new Schema({
     },
     approvedAt: {
         type: Date,
-        default: null
+        required: false
     },
     paid: {
         type: Boolean,
+        required: false,
         default: false
     },
     paidAt: {
         type: Date,
-        default: null
+        required: false
     }
 }, {
     timestamps: true
