@@ -114,6 +114,7 @@ module.exports = {
           "nomeaprovador",
           "commaprovador",
           "obsgeral",
+          "approvedAt",
           "paid",
           "paidAt"
         ];
@@ -159,7 +160,7 @@ module.exports = {
           return res.status(400).json({ error: "Data de pagamento inválida" });
         }
 
-        const returnUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
+        let finalUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
         const DespesaDoc = await Despesa.findOne({ _id: req.params.id });
 
         if (status == "1") { //envia para aprovação
@@ -176,6 +177,7 @@ module.exports = {
               { _id: req.params.id },
               { idaprovador: user[0]._id, nomeaprovador: user[0].nome, status: 2, approvedAt: new Date() }
             );
+            finalUpdate = returnUpdate3;
             await DespesaItem.updateMany(
               { iddespesa: req.params.id, status: { $ne: "3" } },
               { status: "2" }
@@ -246,10 +248,11 @@ module.exports = {
               sendFinalEmail(DespesaDoc, messages, transporter);
 
             }
-            return res.json(returnUpdate)
+            return res.json(returnUpdate3)
           }
 
           const returnUpdate2 = await Despesa.updateOne({ _id: req.params.id },{idaprovador: user[0]._id, nomeaprovador: user[0].nome});
+          finalUpdate = returnUpdate2;
 
             if (user) {
                 let transporter = nodemailer.createTransport({
@@ -459,7 +462,7 @@ module.exports = {
           }
         }
 
-        return res.json(returnUpdate)
+        return res.json(finalUpdate)
     },
 
     async markSelectedAsPaid(req, res) {
