@@ -127,18 +127,17 @@ module.exports = {
         });
 
         const status = req.body.status;
-        const requestedStatus = typeof status !== "undefined" ? String(status) : undefined;
         let messages = [];
 
         if (Object.keys(updateBody).length === 0) {
           return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
         }
 
-        if (typeof requestedStatus !== "undefined") {
-          if (requestedStatus === "2") {
+        if (typeof status !== "undefined" && String(status) === "2") {
+          const currentDespesa = await Despesa.findById(req.params.id);
+
+          if (!currentDespesa?.approvedAt) {
             updateBody.approvedAt = new Date();
-          } else {
-            updateBody.approvedAt = null;
           }
         }
 
@@ -174,9 +173,15 @@ module.exports = {
           let user = await Usuario.find({ _id: reqArea[0].idaprovador });
 
           if(requester[0]._id == user[0]._id) {
+            const currentDespesa = await Despesa.findById(req.params.id);
             const returnUpdate3 = await Despesa.updateOne(
               { _id: req.params.id },
-              { idaprovador: user[0]._id, nomeaprovador: user[0].nome, status: 2, approvedAt: new Date() }
+              {
+                idaprovador: user[0]._id,
+                nomeaprovador: user[0].nome,
+                status: 2,
+                approvedAt: currentDespesa?.approvedAt || new Date()
+              }
             );
             finalUpdate = returnUpdate3;
             await DespesaItem.updateMany(
