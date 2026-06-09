@@ -114,6 +114,7 @@ module.exports = {
           "nomeaprovador",
           "commaprovador",
           "obsgeral",
+          "approvedAt",
           "paid",
           "paidAt"
         ];
@@ -125,19 +126,18 @@ module.exports = {
           }
         });
 
-        const { status } = updateBody;
+        const status = req.body.status;
+        const requestedStatus = typeof status !== "undefined" ? String(status) : undefined;
         let messages = [];
 
         if (Object.keys(updateBody).length === 0) {
           return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
         }
 
-        if (typeof status !== "undefined") {
-          if (String(status) === "2") {
-            updateBody.approvedAt = new Date();
-          } else {
-            updateBody.approvedAt = null;
-          }
+        if (requestedStatus === "2") {
+          updateBody.approvedAt = new Date();
+        } else if (requestedStatus !== undefined) {
+          updateBody.approvedAt = null;
         }
 
         if (typeof updateBody.paid !== "undefined") {
@@ -159,27 +159,35 @@ module.exports = {
           return res.status(400).json({ error: "Data de pagamento inválida" });
         }
 
-        const returnUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
+        let finalUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
         const DespesaDoc = await Despesa.findOne({ _id: req.params.id });
 
-        if (status == "1") { //envia para aprovação
+        if (requestedStatus === "1") {
           await DespesaItem.updateMany(
             { iddespesa: req.params.id, status: { $nin: ["2", "3"] } },
             { status: "1", commaprovadorItem: "" }
           );
+
           const requester = await Usuario.find({ _id: DespesaDoc.idrequester });
-          const reqArea = await DespesaAreaAppr.find({_id: requester[0].idarea});
+          const reqArea = await DespesaAreaAppr.find({ _id: requester[0].idarea });
           let user = await Usuario.find({ _id: reqArea[0].idaprovador });
 
-          if(requester[0]._id == user[0]._id) {
+          if (requester[0]._id == user[0]._id) {
             const returnUpdate3 = await Despesa.updateOne(
               { _id: req.params.id },
-              { idaprovador: user[0]._id, nomeaprovador: user[0].nome, status: 2, approvedAt: new Date() }
+              {
+                idaprovador: user[0]._id,
+                nomeaprovador: user[0].nome,
+                status: 2,
+                approvedAt: new Date(),
+              }
             );
+            finalUpdate = returnUpdate3;
             await DespesaItem.updateMany(
               { iddespesa: req.params.id, status: { $ne: "3" } },
               { status: "2" }
             );
+
             if (user) {
               let transporter = nodemailer.createTransport({
                 host: process.env.EMAIL_SMTP,
@@ -189,7 +197,7 @@ module.exports = {
                   pass: process.env.EMAIL_PWD,
                 },
               });
-      
+
               const options = {
                 viewEngine: {
                   extName: ".handlebars",
@@ -199,25 +207,21 @@ module.exports = {
                 viewPath: "./views/",
                 extName: ".handlebars",
               };
-      
+
               transporter.use("compile", hbs(options));
-      
+
               for (const item of user) {
-      
                 try {
                   await transporter.sendMail({
                     from: "App Superfrio <app@superfriosr.com.br>",
                     to: item.email,
-                    //to: "cleber.znch@gmail.com",
                     bcc: "cleber.znch@gmail.com",
-                    subject:
-                      "Seu Relatório de despesas foi aprovado",
+                    subject: "Seu Relatório de despesas foi aprovado",
                     text: "Seu Relatório de despesas foi aprovado",
                     template: "apprdespesaAprovado",
                     context: {
                       numero: DespesaDoc.numero,
                       requester: DespesaDoc.nomerequester,
-                      //data: DespesaDoc.updatedAt,
                       aprovador: DespesaDoc.nomeaprovador,
                       obsgeral: DespesaDoc.obsgeral,
                       titulo: "Seu Relatório de despesas foi aprovado",
@@ -225,10 +229,10 @@ module.exports = {
                       support_email: "mailto:app@superfriosr.com.br",
                     },
                   });
-               } catch (err) {
+                } catch (err) {
                   console.log(err);
-               } 
-      
+                }
+
                 if (item.pushToken) {
                   messages.push({
                     to: item.pushToken,
@@ -237,85 +241,82 @@ module.exports = {
                     wake_screen: true,
                     show_in_foreground: true,
                     title: "Seu Relatório de despesas foi aprovado",
-                    body:
-                      "Seu Relatório de despesas foi aprovado. Revise pelo App Superfrio.",
+                    body: "Seu Relatório de despesas foi aprovado. Revise pelo App Superfrio.",
                   });
                 }
               }
 
               sendFinalEmail(DespesaDoc, messages, transporter);
-
             }
-            return res.json(returnUpdate)
-          }
-
-          const returnUpdate2 = await Despesa.updateOne({ _id: req.params.id },{idaprovador: user[0]._id, nomeaprovador: user[0].nome});
+          } else {
+            const returnUpdate2 = await Despesa.updateOne(
+              { _id: req.params.id },
+              { idaprovador: user[0]._id, nomeaprovador: user[0].nome }
+            );
+            finalUpdate = returnUpdate2;
 
             if (user) {
-                let transporter = nodemailer.createTransport({
-                  host: process.env.EMAIL_SMTP,
-                  port: 465,
-                  auth: {
-                    user: process.env.EMAIL_ACC,
-                    pass: process.env.EMAIL_PWD,
-                  },
-                });
-        
-                const options = {
-                  viewEngine: {
-                    extName: ".handlebars",
-                    partialsDir: "./views/",
-                    defaultLayout: false,
-                  },
-                  viewPath: "./views/",
+              let transporter = nodemailer.createTransport({
+                host: process.env.EMAIL_SMTP,
+                port: 465,
+                auth: {
+                  user: process.env.EMAIL_ACC,
+                  pass: process.env.EMAIL_PWD,
+                },
+              });
+
+              const options = {
+                viewEngine: {
                   extName: ".handlebars",
-                };
-        
-                transporter.use("compile", hbs(options));
-        
-                for (const item of user) {
-                  
-                  try {
-                    await transporter.sendMail({
-                      from: "App Superfrio <app@superfriosr.com.br>",
-                      to: item.email,
-                      //to: "cleber.znch@gmail.com",
-                      bcc: "cleber.znch@gmail.com",
-                      subject:
-                        "Novo Relatório de despesas para aprovação",
-                      text: "Novo Relatório de despesas para aprovação",
-                      template: "apprdespesa",
-                      context: {
-                        numero: DespesaDoc.numero,
-                        requester: DespesaDoc.nomerequester,
-                        data: DespesaDoc.updatedAt,
-                        obsgeral: DespesaDoc.obsgeral,
-                        titulo: "Novo Relatório de despesas para aprovação",
-                        status: "Pendente Aprovação",
-                        support_email: "mailto:app@superfriosr.com.br",
-                      },
-                    });
-                 } catch (err) {
-                    console.log(err);
-                 } 
-        
-                  if (item.pushToken) {
-                    messages.push({
-                      to: item.pushToken,
-                      sound: "default",
-                      priority: "high",
-                      wake_screen: true,
-                      show_in_foreground: true,
-                      title: "Novo Relatório de despesas para aprovação",
-                      body:
-                        "Novo relatório de despesas aguardando sua aprovação. Revise pelo App Superfrio.",
-                    });
-                  }
+                  partialsDir: "./views/",
+                  defaultLayout: false,
+                },
+                viewPath: "./views/",
+                extName: ".handlebars",
+              };
+
+              transporter.use("compile", hbs(options));
+
+              for (const item of user) {
+                try {
+                  await transporter.sendMail({
+                    from: "App Superfrio <app@superfriosr.com.br>",
+                    to: item.email,
+                    bcc: "cleber.znch@gmail.com",
+                    subject: "Novo Relatório de despesas para aprovação",
+                    text: "Novo Relatório de despesas para aprovação",
+                    template: "apprdespesa",
+                    context: {
+                      numero: DespesaDoc.numero,
+                      requester: DespesaDoc.nomerequester,
+                      data: DespesaDoc.updatedAt,
+                      obsgeral: DespesaDoc.obsgeral,
+                      titulo: "Novo Relatório de despesas para aprovação",
+                      status: "Pendente Aprovação",
+                      support_email: "mailto:app@superfriosr.com.br",
+                    },
+                  });
+                } catch (err) {
+                  console.log(err);
+                }
+
+                if (item.pushToken) {
+                  messages.push({
+                    to: item.pushToken,
+                    sound: "default",
+                    priority: "high",
+                    wake_screen: true,
+                    show_in_foreground: true,
+                    title: "Novo Relatório de despesas para aprovação",
+                    body: "Novo relatório de despesas aguardando sua aprovação. Revise pelo App Superfrio.",
+                  });
                 }
               }
+            }
+          }
         }
 
-        if (status == "2") { //aprova -- Incluir email final para o financeiro
+        if (requestedStatus === "2") {
           await DespesaItem.updateMany(
             { iddespesa: req.params.id, status: { $ne: "3" } },
             { status: "2" }
@@ -330,7 +331,7 @@ module.exports = {
                 pass: process.env.EMAIL_PWD,
               },
             });
-    
+
             const options = {
               viewEngine: {
                 extName: ".handlebars",
@@ -340,19 +341,16 @@ module.exports = {
               viewPath: "./views/",
               extName: ".handlebars",
             };
-    
+
             transporter.use("compile", hbs(options));
-    
+
             for (const item of user) {
-    
               try {
                 await transporter.sendMail({
                   from: "App Superfrio <app@superfriosr.com.br>",
                   to: item.email,
-                  //to: "cleber.znch@gmail.com",
                   bcc: "cleber.znch@gmail.com",
-                  subject:
-                    "Seu Relatório de despesas foi aprovado",
+                  subject: "Seu Relatório de despesas foi aprovado",
                   text: "Seu Relatório de despesas foi aprovado",
                   template: "apprdespesaAprovado",
                   context: {
@@ -360,16 +358,15 @@ module.exports = {
                     requester: DespesaDoc.nomerequester,
                     aprovador: DespesaDoc.nomeaprovador,
                     obsgeral: DespesaDoc.obsgeral,
-                    //data: DespesaDoc.updatedAt,
                     titulo: "Seu Relatório de despesas foi aprovado",
                     status: "Aprovado",
                     support_email: "mailto:app@superfriosr.com.br",
                   },
                 });
-             } catch (err) {
+              } catch (err) {
                 console.log(err);
-             } 
-    
+              }
+
               if (item.pushToken) {
                 messages.push({
                   to: item.pushToken,
@@ -378,18 +375,16 @@ module.exports = {
                   wake_screen: true,
                   show_in_foreground: true,
                   title: "Seu Relatório de despesas foi aprovado",
-                  body:
-                    "Seu Relatório de despesas foi aprovado. Revise pelo App Superfrio.",
+                  body: "Seu Relatório de despesas foi aprovado. Revise pelo App Superfrio.",
                 });
               }
             }
-            
-            sendFinalEmail(DespesaDoc, messages, transporter);
 
+            sendFinalEmail(DespesaDoc, messages, transporter);
           }
         }
 
-        if (status == "3") { //rejeita
+        if (requestedStatus === "3") {
           await DespesaItem.updateMany(
             { iddespesa: req.params.id },
             { status: "3" }
@@ -404,7 +399,7 @@ module.exports = {
                 pass: process.env.EMAIL_PWD,
               },
             });
-    
+
             const options = {
               viewEngine: {
                 extName: ".handlebars",
@@ -414,19 +409,16 @@ module.exports = {
               viewPath: "./views/",
               extName: ".handlebars",
             };
-    
+
             transporter.use("compile", hbs(options));
-    
+
             for (const item of user) {
-    
               try {
                 await transporter.sendMail({
                   from: "App Superfrio <app@superfriosr.com.br>",
                   to: item.email,
-                  //to: "cleber.znch@gmail.com",
                   bcc: "cleber.znch@gmail.com",
-                  subject:
-                    "Seu Relatório de despesas foi reprovado",
+                  subject: "Seu Relatório de despesas foi reprovado",
                   text: "Seu Relatório de despesas foi reprovado",
                   template: "apprdespesa",
                   context: {
@@ -439,10 +431,10 @@ module.exports = {
                     support_email: "mailto:app@superfriosr.com.br",
                   },
                 });
-             } catch (err) {
+              } catch (err) {
                 console.log(err);
-             } 
-    
+              }
+
               if (item.pushToken) {
                 messages.push({
                   to: item.pushToken,
@@ -451,17 +443,21 @@ module.exports = {
                   wake_screen: true,
                   show_in_foreground: true,
                   title: "Seu Relatório de despesas foi reprovado",
-                  body:
-                    "Seu Relatório de despesas foi reprovado. Revise pelo App Superfrio.",
+                  body: "Seu Relatório de despesas foi reprovado. Revise pelo App Superfrio.",
                 });
               }
             }
           }
         }
 
-        return res.json(returnUpdate)
-    },
+        let updatedDespesa = await Despesa.findOne({ _id: req.params.id });
+        if (requestedStatus === "2" && updatedDespesa && String(updatedDespesa.status) === "2" && !updatedDespesa.approvedAt) {
+          await Despesa.updateOne({ _id: req.params.id }, { approvedAt: new Date() });
+          updatedDespesa = await Despesa.findOne({ _id: req.params.id });
+        }
 
+        return res.json(updatedDespesa || finalUpdate)
+    },
     async markSelectedAsPaid(req, res) {
       const selectedItems = Array.isArray(req.body?.selectedItems) ? req.body.selectedItems : [];
 
