@@ -114,7 +114,6 @@ module.exports = {
           "nomeaprovador",
           "commaprovador",
           "obsgeral",
-          "approvedAt",
           "paid",
           "paidAt"
         ];
@@ -126,18 +125,18 @@ module.exports = {
           }
         });
 
-        const status = req.body.status;
+        const { status } = updateBody;
         let messages = [];
 
         if (Object.keys(updateBody).length === 0) {
           return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
         }
 
-        if (typeof status !== "undefined" && String(status) === "2") {
-          const currentDespesa = await Despesa.findById(req.params.id);
-
-          if (!currentDespesa?.approvedAt) {
+        if (typeof status !== "undefined") {
+          if (String(status) === "2") {
             updateBody.approvedAt = new Date();
+          } else {
+            updateBody.approvedAt = null;
           }
         }
 
@@ -160,7 +159,7 @@ module.exports = {
           return res.status(400).json({ error: "Data de pagamento inválida" });
         }
 
-        let finalUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
+        const returnUpdate = await Despesa.updateOne({ _id: req.params.id }, updateBody);
         const DespesaDoc = await Despesa.findOne({ _id: req.params.id });
 
         if (status == "1") { //envia para aprovação
@@ -173,17 +172,10 @@ module.exports = {
           let user = await Usuario.find({ _id: reqArea[0].idaprovador });
 
           if(requester[0]._id == user[0]._id) {
-            const currentDespesa = await Despesa.findById(req.params.id);
             const returnUpdate3 = await Despesa.updateOne(
               { _id: req.params.id },
-              {
-                idaprovador: user[0]._id,
-                nomeaprovador: user[0].nome,
-                status: 2,
-                approvedAt: currentDespesa?.approvedAt || new Date()
-              }
+              { idaprovador: user[0]._id, nomeaprovador: user[0].nome, status: 2, approvedAt: new Date() }
             );
-            finalUpdate = returnUpdate3;
             await DespesaItem.updateMany(
               { iddespesa: req.params.id, status: { $ne: "3" } },
               { status: "2" }
@@ -254,10 +246,10 @@ module.exports = {
               sendFinalEmail(DespesaDoc, messages, transporter);
 
             }
+            return res.json(returnUpdate)
           }
 
           const returnUpdate2 = await Despesa.updateOne({ _id: req.params.id },{idaprovador: user[0]._id, nomeaprovador: user[0].nome});
-          finalUpdate = returnUpdate2;
 
             if (user) {
                 let transporter = nodemailer.createTransport({
@@ -467,13 +459,7 @@ module.exports = {
           }
         }
 
-        let updatedDespesa = await Despesa.findOne({ _id: req.params.id });
-        if (requestedStatus === "2" && updatedDespesa && String(updatedDespesa.status) === "2" && !updatedDespesa.approvedAt) {
-          await Despesa.updateOne({ _id: req.params.id }, { approvedAt: new Date() });
-          updatedDespesa = await Despesa.findOne({ _id: req.params.id });
-        }
-
-        return res.json(updatedDespesa || finalUpdate)
+        return res.json(returnUpdate)
     },
 
     async markSelectedAsPaid(req, res) {
