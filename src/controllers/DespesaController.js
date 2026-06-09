@@ -248,7 +248,6 @@ module.exports = {
               sendFinalEmail(DespesaDoc, messages, transporter);
 
             }
-            return res.json(returnUpdate3)
           }
 
           const returnUpdate2 = await Despesa.updateOne({ _id: req.params.id },{idaprovador: user[0]._id, nomeaprovador: user[0].nome});
@@ -462,7 +461,13 @@ module.exports = {
           }
         }
 
-        return res.json(finalUpdate)
+        let updatedDespesa = await Despesa.findOne({ _id: req.params.id });
+        if (updatedDespesa && String(updatedDespesa.status) === "2" && !updatedDespesa.approvedAt) {
+          await Despesa.updateOne({ _id: req.params.id }, { approvedAt: new Date() });
+          updatedDespesa = await Despesa.findOne({ _id: req.params.id });
+        }
+
+        return res.json(updatedDespesa || finalUpdate)
     },
 
     async markSelectedAsPaid(req, res) {
