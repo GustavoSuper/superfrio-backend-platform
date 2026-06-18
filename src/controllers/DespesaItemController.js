@@ -1,4 +1,5 @@
 const DespesaItem = require('../model/DespesaItem');
+const Despesa = require('../model/Despesa');
 const Usuario = require('../model/Usuario');
 const mongoose = require('mongoose');
 
@@ -34,6 +35,55 @@ async function addRequesterArea(items) {
             requesterArea
         };
     });
+}
+
+function normalizeStatus(status) {
+    return typeof status === "undefined" || status === null ? "" : String(status);
+}
+
+async function syncDespesaStatusFromItems(iddespesa) {
+    if (!iddespesa) {
+        return;
+    }
+
+    const [despesa, itens] = await Promise.all([
+        Despesa.findById(iddespesa),
+        DespesaItem.find({ iddespesa }).select("status").lean()
+    ]);
+
+    if (!despesa || itens.length === 0) {
+        return;
+    }
+
+    const normalizedStatuses = itens.map((item) => normalizeStatus(item.status));
+    const hasPendingItems = normalizedStatuses.some((status) => !["2", "3"].includes(status));
+    const hasApprovedItems = normalizedStatuses.some((status) => status === "2");
+    const allRejectedItems = normalizedStatuses.every((status) => status === "3");
+
+    let nextDespesaStatus = normalizeStatus(despesa.status);
+
+    if (!hasPendingItems) {
+        nextDespesaStatus = allRejectedItems && !hasApprovedItems ? "3" : "2";
+    } else if (["2", "3"].includes(normalizeStatus(despesa.status))) {
+        nextDespesaStatus = "1";
+    }
+
+    const updateBody = {};
+    if (nextDespesaStatus !== normalizeStatus(despesa.status)) {
+        updateBody.status = nextDespesaStatus;
+    }
+
+    if (nextDespesaStatus === "2" && !despesa.approvedAt) {
+        updateBody.approvedAt = new Date();
+    }
+
+    if (nextDespesaStatus !== "2" && despesa.approvedAt) {
+        updateBody.approvedAt = null;
+    }
+
+    if (Object.keys(updateBody).length > 0) {
+        await Despesa.updateOne({ _id: despesa._id }, updateBody);
+    }
 }
 
 
@@ -152,7 +202,17 @@ module.exports = {
             return res.status(400).json({ error: "Nenhum campo válido para atualizar" });
         }
 
+        const itemBeforeUpdate = await DespesaItem.findById(req.params.id);
+        if (!itemBeforeUpdate) {
+            return res.status(404).json({ error: "Item da despesa não encontrado" });
+        }
+
         const returnUpdate = await DespesaItem.updateOne({ _id: req.params.id }, updateBody);
+
+        if (Object.prototype.hasOwnProperty.call(updateBody, "status")) {
+            await syncDespesaStatusFromItems(updateBody.iddespesa || itemBeforeUpdate.iddespesa);
+        }
+
         return res.json(returnUpdate)
     },
 
