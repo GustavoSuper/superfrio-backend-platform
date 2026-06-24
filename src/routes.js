@@ -201,6 +201,7 @@ routes.get('/despesa/status/pending/:id', Despesa.showByPending);
 routes.get('/despesa/status/apprej/:id', Despesa.showByAppRej);
 routes.get('/despesa/requester/count/:id', Despesa.countByRequester);
 routes.get('/despesa/pending/count/:id', Despesa.countByPending);
+routes.post('/despesa/delete/selected', Despesa.deleteSelected);
 routes.post('/despesa/mark-paid/selected', Despesa.markSelectedAsPaid);
 routes.put('/despesa/:id', Despesa.update);
 routes.delete('/despesa/:id', Despesa.delete);

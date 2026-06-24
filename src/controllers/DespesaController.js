@@ -153,6 +153,10 @@ module.exports = {
           requesterArea: requestersById[String(despesa.idrequester)]?.area || ""
         }));
 
+        // #region debug-point C:index-response
+        fetch("http://192.168.0.111:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"despesa-approved-at",runId:"pre-fix",hypothesisId:"C",location:"DespesaController.js:156",msg:"[DEBUG] Retorno do GET /despesa montado",data:{count:despesasWithArea.length,approvedSample:despesasWithArea.slice(0,5).map((item)=>({id:String(item._id),numero:item.numero,status:normalizeDespesaStatus(item.status),approvedAt:item.approvedAt || null,nomeaprovador:item.nomeaprovador || null}))},ts:Date.now()})}).catch(()=>{});
+        // #endregion
+
         return res.json(despesasWithArea)
     },
 
@@ -254,6 +258,10 @@ module.exports = {
           nextStatus,
           DespesaDocBeforeUpdate.approvedAt
         );
+
+        // #region debug-point B:despesa-update-entry
+        fetch("http://192.168.0.111:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"despesa-approved-at",runId:"pre-fix",hypothesisId:"B",location:"DespesaController.js:257",msg:"[DEBUG] Atualizacao direta da despesa recebida",data:{despesaId:String(req.params.id),previousStatus,nextStatus,approvedAtBefore:DespesaDocBeforeUpdate.approvedAt || null,resolvedApprovedAt:resolvedApprovedAt || null,payloadKeys:Object.keys(updateBody)},ts:Date.now()})}).catch(()=>{});
+        // #endregion
 
         if (typeof resolvedApprovedAt !== "undefined") {
           updateBody.approvedAt = resolvedApprovedAt;

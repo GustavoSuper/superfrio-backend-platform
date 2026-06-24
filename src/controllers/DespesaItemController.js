@@ -81,6 +81,10 @@ async function syncDespesaStatusFromItems(iddespesa) {
         updateBody.approvedAt = null;
     }
 
+    // #region debug-point D:item-parent-sync
+    fetch("http://192.168.0.111:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"despesa-approved-at",runId:"pre-fix",hypothesisId:"D",location:"DespesaItemController.js:71",msg:"[DEBUG] Resultado do recalculo da despesa pai a partir dos itens",data:{iddespesa:String(iddespesa),previousDespesaStatus:normalizeStatus(despesa.status),nextDespesaStatus,approvedAtBefore:despesa.approvedAt || null,approvedAtAfter:updateBody.approvedAt || null,itemStatuses:normalizedStatuses},ts:Date.now()})}).catch(()=>{});
+    // #endregion
+
     if (Object.keys(updateBody).length > 0) {
         await Despesa.updateOne({ _id: despesa._id }, updateBody);
     }
@@ -206,6 +210,10 @@ module.exports = {
         if (!itemBeforeUpdate) {
             return res.status(404).json({ error: "Item da despesa não encontrado" });
         }
+
+        // #region debug-point A:item-update-entry
+        fetch("http://192.168.0.111:7777/event",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({sessionId:"despesa-approved-at",runId:"pre-fix",hypothesisId:"A",location:"DespesaItemController.js:160",msg:"[DEBUG] Atualizacao de item de despesa recebida",data:{itemId:String(req.params.id),iddespesa:String(updateBody.iddespesa || itemBeforeUpdate.iddespesa || ""),previousItemStatus:normalizeStatus(itemBeforeUpdate.status),nextItemStatus:normalizeStatus(updateBody.status),payloadKeys:Object.keys(updateBody)},ts:Date.now()})}).catch(()=>{});
+        // #endregion
 
         const returnUpdate = await DespesaItem.updateOne({ _id: req.params.id }, updateBody);
 

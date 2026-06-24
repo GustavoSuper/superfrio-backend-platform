@@ -8,6 +8,41 @@ const puppeteer = require('puppeteer-core');
 const chromium = require('@sparticuz/chromium-min');
 const { runPdfJob, enablePdfImageOptimization } = require('../utils/pdfQueue');
 
+const MAX_SELECTED_DESPESAS = 50;
+const MAX_FOTOS_PER_PDF = 240;
+const IMAGE_LOAD_TIMEOUT_MS = 120000;
+
+async function waitForImagesToSettle(page, timeoutMs = IMAGE_LOAD_TIMEOUT_MS) {
+    await page.evaluate((maxWait) => {
+        const images = Array.from(document.images || []);
+
+        if (images.length === 0) {
+            return Promise.resolve();
+        }
+
+        const imagePromises = images.map((img) => {
+            if (img.complete) {
+                return Promise.resolve();
+            }
+
+            return new Promise((resolve) => {
+                const done = () => resolve();
+                img.addEventListener('load', done, { once: true });
+                img.addEventListener('error', done, { once: true });
+            });
+        });
+
+        const timeoutPromise = new Promise((resolve) => {
+            setTimeout(resolve, maxWait);
+        });
+
+        return Promise.race([
+            Promise.all(imagePromises),
+            timeoutPromise
+        ]);
+    }, timeoutMs);
+}
+
 module.exports = {
 
     async create(req, res){
@@ -161,6 +196,7 @@ module.exports = {
     async createSelectedPhotos(req, res) {
         return runPdfJob(async () => {
             try {
+                const startedAt = Date.now();
                 const selectedItems = Array.isArray(req.body?.selectedItems) ? req.body.selectedItems : [];
 
                 if (selectedItems.length === 0) {
@@ -175,6 +211,12 @@ module.exports = {
                     return res.status(400).send({ error: "IDs inválidos" });
                 }
 
+                if (ids.length > MAX_SELECTED_DESPESAS) {
+                    return res.status(422).send({
+                        error: `Selecione no máximo ${MAX_SELECTED_DESPESAS} despesas por exportação em PDF`
+                    });
+                }
+
                 const escapeHtml = (value) =>
                     String(value ?? "")
                         .replace(/&/g, "&amp;")
@@ -183,14 +225,31 @@ module.exports = {
                         .replace(/\"/g, "&quot;")
                         .replace(/'/g, "&#39;");
 
-                const despesas = await ChecklistComp.find({ _id: { $in: ids } }).sort({ numero: 1 });
+                const despesas = await ChecklistComp.find({ _id: { $in: ids } }).sort({ numero: 1 }).lean();
 
-                const despesasWithItems = await Promise.all(
-                    despesas.map(async (d) => {
-                        const itens = await ChecklistCompItem.find({ iddespesa: d._id });
-                        return { despesa: d, itens };
-                    })
-                );
+                if (despesas.length !== ids.length) {
+                    const existingIds = despesas.map((item) => String(item._id));
+                    const missingIds = ids.filter((id) => !existingIds.includes(id));
+                    return res.status(400).send({
+                        error: "Uma ou mais despesas selecionadas não foram encontradas",
+                        missingIds
+                    });
+                }
+
+                const itens = await ChecklistCompItem.find({ iddespesa: { $in: despesas.map((item) => item._id) } }).lean();
+                const itensByDespesaId = itens.reduce((acc, item) => {
+                    const despesaId = String(item.iddespesa);
+                    if (!acc[despesaId]) {
+                        acc[despesaId] = [];
+                    }
+                    acc[despesaId].push(item);
+                    return acc;
+                }, {});
+
+                const despesasWithItems = despesas.map((d) => ({
+                    despesa: d,
+                    itens: itensByDespesaId[String(d._id)] || []
+                }));
 
                 let html = `
 <!doctype html>
@@ -304,6 +363,7 @@ module.exports = {
 `;
 
                 const fotosExportacao = [];
+                const skippedDespesas = [];
 
                 for (const entry of despesasWithItems) {
                     const d = entry.despesa;
@@ -312,6 +372,10 @@ module.exports = {
 
                     const fotos = itens.filter((it) => !!it?.foto);
                     if (fotos.length === 0) {
+                        skippedDespesas.push({
+                            id: String(d._id),
+                            numero: d.numero
+                        });
                         continue;
                     }
 
@@ -322,6 +386,21 @@ module.exports = {
                             dataentrada
                         });
                     }
+                }
+
+                if (fotosExportacao.length === 0) {
+                    return res.status(422).send({
+                        error: "Nenhuma foto disponível nas despesas selecionadas",
+                        skippedCount: skippedDespesas.length,
+                        skippedItems: skippedDespesas
+                    });
+                }
+
+                if (fotosExportacao.length > MAX_FOTOS_PER_PDF) {
+                    return res.status(422).send({
+                        error: `Selecione no máximo ${MAX_FOTOS_PER_PDF} fotos por exportação em PDF`,
+                        photoCount: fotosExportacao.length
+                    });
                 }
 
                 const fotoPages = [];
@@ -381,7 +460,8 @@ module.exports = {
                     page = await browser.newPage();
                     await enablePdfImageOptimization(page);
 
-                    await page.setContent(html, { waitUntil: 'networkidle0' });
+                    await page.setContent(html, { waitUntil: 'domcontentloaded' });
+                    await waitForImagesToSettle(page);
 
                     const pdfBuffer = await page.pdf({
                         format: "A4",
@@ -424,7 +504,21 @@ module.exports = {
 
                     const data = await s3.upload(params).promise();
 
-                    return res.status(200).send({ success: true, pdflink: data.Location });
+                    console.log("[PDF Despesa Fotos] sucesso", {
+                        selectedCount: ids.length,
+                        photoCount: fotosExportacao.length,
+                        skippedCount: skippedDespesas.length,
+                        elapsedMs: Date.now() - startedAt
+                    });
+
+                    return res.status(200).send({
+                        success: true,
+                        pdflink: data.Location,
+                        selectedCount: ids.length,
+                        photoCount: fotosExportacao.length,
+                        skippedCount: skippedDespesas.length,
+                        skippedItems: skippedDespesas
+                    });
                 } catch (err) {
                     if (page) {
                         try {
@@ -442,11 +536,15 @@ module.exports = {
                         }
                     }
 
-                    console.log("Erro: " + err);
+                    console.log("[PDF Despesa Fotos] erro", {
+                        selectedCount: ids.length,
+                        elapsedMs: Date.now() - startedAt,
+                        err
+                    });
                     return res.status(400).send({ error: "Erro ao gerar PDF" });
                 }
             } catch (err) {
-                console.log("Erro geral: " + err);
+                console.log("[PDF Despesa Fotos] erro geral:", err);
                 return res.status(400).send({ error: "Erro ao processar a solicitação" });
             }
         });
