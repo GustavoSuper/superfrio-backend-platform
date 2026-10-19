@@ -9,6 +9,50 @@ const nodemailer = require("nodemailer");
 const hbs = require("nodemailer-express-handlebars");
 const { Expo } = require("expo-server-sdk");
 
+/**
+ * Mantém a regra já usada pelo aplicativo:
+ * - todos os itens precisam ter avaliação;
+ * - os quatro primeiros itens precisam de foto;
+ * - os demais itens precisam de foto quando a avaliação é 1.
+ */
+function validarItensChecklist(itens) {
+  if (!Array.isArray(itens) || itens.length === 0) {
+    return {
+      tipo: "itens",
+      item: null,
+      message: "Não foi possível verificar os itens deste checklist. Recarregue e tente novamente.",
+    };
+  }
+
+  const itemSemAvaliacao = itens.find((item) =>
+    item.avaliacao === undefined || item.avaliacao === null || item.avaliacao === ""
+  );
+
+  if (itemSemAvaliacao) {
+    return {
+      tipo: "avaliacao",
+      item: itemSemAvaliacao.nomeitem,
+      message: "O checklist ainda possui itens pendentes de avaliação. Conclua todas as avaliações antes de finalizar o checklist.",
+    };
+  }
+
+  const itemSemFoto = itens.find((item, index) => {
+    const fotoObrigatoria = index < 4 || Number(item.avaliacao) === 1;
+    const temFoto = typeof item.foto === "string" && item.foto.trim().length > 0;
+    return fotoObrigatoria && !temFoto;
+  });
+
+  if (itemSemFoto) {
+    return {
+      tipo: "foto",
+      item: itemSemFoto.nomeitem,
+      message: "O checklist ainda possui fotos pendentes. Envie todas as fotos necessárias antes de finalizar o checklist.",
+    };
+  }
+
+  return null;
+}
+
 module.exports = {
   async index(req, res) {
     const returnGet = await ChecklistComp.aggregate([
@@ -168,11 +212,39 @@ module.exports = {
   },
 
   async update(req, res) {
+    const { status, statusExit, status_comm } = req.body;
+
+    // A validação precisa acontecer antes do update para não gravar o envio incompleto.
+    if (String(status) === "1") {
+      const itens = await ChecklistCompItem.find({ idchecklistcomp: req.params.id })
+        .sort({ ordemitem: 1 })
+        .lean();
+      const pendencia = validarItensChecklist(itens);
+      if (pendencia) {
+        return res.status(400).json({
+          code: "CHECKLIST_INCOMPLETO",
+          ...pendencia,
+        });
+      }
+    }
+
+    if (String(statusExit) === "1") {
+      const itens = await ChecklistCompItemExit.find({ idchecklistcomp: req.params.id })
+        .sort({ ordemitem: 1 })
+        .lean();
+      const pendencia = validarItensChecklist(itens);
+      if (pendencia) {
+        return res.status(400).json({
+          code: "CHECKLIST_INCOMPLETO",
+          ...pendencia,
+        });
+      }
+    }
+
     const returnUpdate = await ChecklistComp.updateOne(
       { _id: req.params.id },
       req.body
     );
-    const { status, status_comm } = req.body;
     let messages = [];
 
     if (status == "1") {
