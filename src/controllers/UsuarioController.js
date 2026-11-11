@@ -170,7 +170,7 @@ module.exports = {
     },
 
     async store(req, res) {
-        const { nome, email, pwd, validado, telefone, centro_custo, admin, access_comp, access_pit, access_web, access_rack, access_despesa, web_appr, desp_appr, access_app, area, idarea, receive_final_despesa } = req.body;
+        const { nome, email, pwd, validado, telefone, centro_custo, admin, access_comp, access_pit, access_web, access_rack, access_despesa, web_appr, desp_appr, access_app, area, idarea, receive_final_despesa, dados_bancarios } = req.body;
 
         const nomeUpper = typeof nome === "undefined" || nome === null ? nome : String(nome).trim().toUpperCase();
 
@@ -200,7 +200,8 @@ module.exports = {
             area,
             idarea,
             centro_custo,
-            receive_final_despesa
+            receive_final_despesa,
+            dados_bancarios
         });
 
         const user = await Usuario.findOne({ email });

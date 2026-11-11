@@ -77,6 +77,23 @@ const UsuarioSchema = new Schema({
     pushToken: {
         type: String
     },
+    dados_bancarios: {
+        // 'pix' ou 'conta'
+        tipo: { type: String, enum: ['', 'pix', 'conta'], default: '' },
+        // Pix
+        pix_tipo_chave: { type: String, default: '' },
+        pix_chave: { type: String, default: '' },
+        // Conta bancária
+        banco: { type: String, default: '' },
+        tipo_conta: { type: String, default: '' },
+        agencia: { type: String, default: '' },
+        conta: { type: String, default: '' },
+        conta_digito: { type: String, default: '' },
+        // Titular
+        titular_nome: { type: String, default: '' },
+        titular_tipo_doc: { type: String, enum: ['', 'CPF', 'CNPJ'], default: '' },
+        titular_documento: { type: String, default: '' },
+    },
 }, {
     timestamps: true
 });
