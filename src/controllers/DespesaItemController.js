@@ -9,7 +9,7 @@ async function addRequesterArea(items) {
         .map((despesa) => despesa && despesa.idrequester)
         .filter((id) => id && mongoose.Types.ObjectId.isValid(id));
 
-    const users = await Usuario.find({ _id: { $in: requesterIds } }).select("_id area").lean();
+    const users = await Usuario.find({ _id: { $in: requesterIds } }).select("_id area dados_bancarios").lean();
     const usersById = users.reduce((acc, user) => {
         acc[String(user._id)] = user;
         return acc;
@@ -19,7 +19,8 @@ async function addRequesterArea(items) {
         if (Array.isArray(item.iddespesa)) {
             const despesas = item.iddespesa.map((despesa) => ({
                 ...despesa,
-                requesterArea: usersById[String(despesa.idrequester)]?.area || ""
+                requesterArea: usersById[String(despesa.idrequester)]?.area || "",
+                requesterBank: usersById[String(despesa.idrequester)]?.dados_bancarios || null
             }));
             return {
                 ...item,
@@ -29,9 +30,10 @@ async function addRequesterArea(items) {
         }
 
         const requesterArea = usersById[String(item.iddespesa?.idrequester)]?.area || "";
+        const requesterBank = usersById[String(item.iddespesa?.idrequester)]?.dados_bancarios || null;
         return {
             ...item,
-            iddespesa: item.iddespesa ? { ...item.iddespesa, requesterArea } : item.iddespesa,
+            iddespesa: item.iddespesa ? { ...item.iddespesa, requesterArea, requesterBank } : item.iddespesa,
             requesterArea
         };
     });
